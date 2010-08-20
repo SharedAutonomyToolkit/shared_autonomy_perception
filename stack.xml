@@ -1,0 +1,10 @@
+<stack>
+  <description brief="shared_autonomy">shared_autonomy</description>
+  <author>Maintained by Charles DuHadway</author>
+  <license>BSD</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/shared_autonomy</url>
+  <depend stack="navigation" /> <!-- base_local_planner, costmap_2d -->
+  <depend stack="ros" /> <!-- roscpp -->
+
+</stack>
