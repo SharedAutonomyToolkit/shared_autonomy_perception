@@ -21,7 +21,7 @@ SafeTrajectoryPlanner::SafeTrajectoryPlanner(WorldModel& world_model,
   world_model_(world_model), footprint_spec_(footprint_spec),
   inscribed_radius_(inscribed_radius), circumscribed_radius_(circumscribed_radius),
   sim_time_(sim_time), sim_granularity_(sim_granularity),
-  vx_samples_(vx_samples), vtheta_samples_(vtheta_samples),
+  vx_samples_(vx_samples), vy_samples_(vy_samples), vtheta_samples_(vtheta_samples),
   userdist_scale_(userdist_scale), occdist_scale_(occdist_scale),
   acc_lim_x_(acc_lim_x), acc_lim_y_(acc_lim_y), acc_lim_theta_(acc_lim_theta),
   max_vel_x_(max_vel_x), min_vel_x_(min_vel_x),
@@ -394,6 +394,7 @@ Trajectory SafeTrajectoryPlanner::findBestPath(tf::Stamped<tf::Pose> global_pose
 
   if(best.cost_ < 0) {
     drive_velocities.setIdentity();
+    ROS_INFO("No safe trajectory found");
   }
   else {
     btVector3 start(best.xv_, best.yv_, 0);

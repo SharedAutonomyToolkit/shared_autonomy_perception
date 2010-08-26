@@ -159,19 +159,15 @@ namespace safe_teleop {
   }
 
   void SafeTrajectoryPlannerROS::cmdCallback(const geometry_msgs::Twist::ConstPtr& vel) {
-    if (vel->linear.x <= 0)  { // backwards and rotations allowed to pass through directly
-      cmd_pub_.publish(vel);
-//      ROS_DEBUG("pass: (%.2f, %.2f, %.2f)", vel->linear.x, vel->linear.y, vel->angular.z);
-    } else {
+    if ((vel->linear.x > 0) || (fabs(vel->linear.y) > 0)) {
       geometry_msgs::Twist safe_vel;
       if (computeVelocityCommands(vel, safe_vel)) {
+        cmd_pub_.publish(safe_vel);
         if ((vel->linear.x != safe_vel.linear.x) || (vel->angular.z != safe_vel.angular.z)) {
           ROS_DEBUG("safe: (%.2f, %.2f) -> (%.2f, %.2f)",
               vel->linear.x, vel->angular.z,
               safe_vel.linear.x, safe_vel.angular.z);
-//                  safe_vel.angular.z = -safe_vel.angular.z;
         }
-        cmd_pub_.publish(safe_vel);
       } else {
         geometry_msgs::Twist zero_vel;
         cmd_pub_.publish(zero_vel);
@@ -179,6 +175,9 @@ namespace safe_teleop {
             vel->linear.x, vel->angular.z,
             zero_vel.linear.x, zero_vel.angular.z);
       }
+
+    } else { // backwards and rotations allowed to pass through directly
+      cmd_pub_.publish(vel);
     }
   }
 
