@@ -44,7 +44,7 @@ namespace safe_teleop {
     odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &SafeTrajectoryPlannerROS::odomCallback, this);
     user_sub_ = nh_.subscribe<geometry_msgs::Twist>("base_velocity", 1, boost::bind(&SafeTrajectoryPlannerROS::cmdCallback, this, _1));
 
-    cmd_pub_ = private_nh_.advertise<geometry_msgs::Twist>("safe_vel", 1);
+    cmd_pub_ = private_nh.advertise<geometry_msgs::Twist>("safe_vel", 1);
 
     geometry_msgs::Twist vel;
     cmd_pub_.publish(vel);
