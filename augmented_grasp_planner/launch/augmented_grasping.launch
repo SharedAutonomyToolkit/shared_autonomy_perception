@@ -1,0 +1,7 @@
+<launch>
+  <node name="augmented_database_grasping" pkg="augmented_grasp_planner" type="augmented_grasp_planner" output="screen">
+    <param name="planner_service_name" value="/augmented_database_grasp_planning"/>
+    <param name="automated_planner_service_name" value="/objects_database_node/database_grasp_planning"/>
+  </node>
+</launch>
+

@@ -1,0 +1,9 @@
+int32 MARKER_SELECTION=1
+int32 POINT_CLOUD_SELECTION=2
+int32 GRASP_POSE_SELECTION=3
+int32 type
+geometry_msgs/Point32[] points
+string markerNameSpace
+int32 markerID
+int32 numPoints
+geometry_msgs/TransformStamped transform

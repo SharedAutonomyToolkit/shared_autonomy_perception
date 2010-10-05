@@ -1,0 +1,36 @@
+<launch>
+
+  <!-- client for object database running on remote server at Willow Garage -->
+  <include file="$(find household_objects_database)/launch/objects_database_remote_client.launch"/>
+
+  <!-- alternative option: database server running on a local machine -->
+  <!--
+  <param name="/household_objects_database/database_host" value="wgs36"/>
+  <param name="/household_objects_database/database_port" value="5432"/>
+  <param name="/household_objects_database/database_user" value="willow"/>
+  <param name="/household_objects_database/database_pass" value="willow"/>
+  <param name="/household_objects_database/database_name" value="household_objects-0.2"/>
+  <node pkg="household_objects_database" name="objects_database_node" type="objects_database_node" 
+  	respawn="true" output="screen"/>    
+  -->
+
+  <!-- manipulation prerequisites -->
+  <include file="$(find pr2_object_manipulation_launch)/launch/pr2_manipulation_prerequisites.launch"/>
+
+  <!-- manipulation -->
+  <include file="$(find augmented_grasp_planner)/launch/pr2_augmented_manipulation.launch"/>
+  <param name="/augmented_database_grasping/automated_planner_service_name" value="/objects_database_node/database_grasp_planning" />
+
+  <!-- tabletop perception -->
+  <include file="$(find tabletop_object_detector)/launch/tabletop_node.launch"/>
+  <param name="/tabletop_node/use_database" value="true"/>
+  <param name="/tabletop_node/model_set" value="REDUCED_MODEL_SET" />
+  <param name="/tabletop_node/get_model_list_srv" value="/objects_database_node/get_model_list" />	
+  <param name="/tabletop_node/get_model_mesh_srv" value="/objects_database_node/get_model_mesh" />	
+
+  <node pkg="tabletop_collision_map_processing" name="tabletop_collision_map_processing" 
+        type="tabletop_collision_map_processing_node" respawn="false" output="screen"/>
+  <param name="tabletop_collision_map_processing/get_model_mesh_srv" 
+         value="/objects_database_node/get_model_mesh" />
+
+</launch>

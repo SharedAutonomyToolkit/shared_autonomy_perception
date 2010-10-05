@@ -1,0 +1,15 @@
+<package>
+  <description brief="interactive_rviz_msgs">
+
+     interactive_rviz_msgs
+
+  </description>
+  <author>Charles DuHadway</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/interactive_rviz_msgs</url>
+  <depend package="geometry_msgs"/>
+
+</package>
+
+

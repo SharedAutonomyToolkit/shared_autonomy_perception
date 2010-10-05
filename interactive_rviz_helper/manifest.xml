@@ -1,0 +1,14 @@
+<package>
+  <description brief="augmented_rviz">
+     Checks out and patches rviz with visualization extensions
+  </description>
+  <author>Charles DuHadway</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/augmented_rviz</url>
+
+  <rosdep name="interactive_rviz_msgs"/>
+
+</package>
+
+
