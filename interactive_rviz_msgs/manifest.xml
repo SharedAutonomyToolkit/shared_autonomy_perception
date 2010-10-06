@@ -1,8 +1,6 @@
 <package>
   <description brief="interactive_rviz_msgs">
-
-     interactive_rviz_msgs
-
+     Defines messages used for communication between our custom interactive rviz and the augmented_grasp_planner.
   </description>
   <author>Charles DuHadway</author>
   <license>BSD</license>

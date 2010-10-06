@@ -39,6 +39,15 @@ geometry_msgs::PoseStamped getTargetPose(const object_manipulation_msgs::Graspab
   }
 }
 
+// distance between two grasps
+float grasp_distance(const object_manipulation_msgs::Grasp& a, const object_manipulation_msgs::Grasp& b) {
+  tf::Pose a_pose, b_pose;
+  tf::poseMsgToTF(a.grasp_pose, a_pose);
+  tf::poseMsgToTF(b.grasp_pose, b_pose);
+  double d_theta = a_pose.getRotation().angle(b_pose.getRotation());
+  double d2 = (a_pose.getOrigin() - b_pose.getOrigin()).length2();
+  return d2 + d_theta;
+}
 
 class AugmentedGraspPlanner {
 private:
@@ -100,12 +109,14 @@ public:
     user_selection_interface::UserGraspSelection marker_selector;
     marker_selector.init(target_pose, poses);
     int selected = marker_selector.select();
+    object_manipulation_msgs::Grasp selected_grasp = grasps[selected];
 
-    if (selected > 0) {
-      object_manipulation_msgs::Grasp tmp = grasps[0];
-      grasps[0] = grasps[selected];
-      grasps[selected] = tmp;
-    }
+    // sort grasps by distance to selected grasp
+    sort (grasps.begin(),
+          grasps.end(),
+          boost::bind(std::less<float>(),
+                      boost::bind(&grasp_distance, _1, selected_grasp),
+                      boost::bind(&grasp_distance, _2, selected_grasp)));
   }
 
 };

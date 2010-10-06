@@ -1,6 +1,6 @@
 <package>
   <description brief="augmented_grasp_planner">
-     Uses human feedback to adjust results of any automated grasp planner.
+     Uses human feedback to sort results of any automatic grasp planner.
   </description>
   <author>Charles DuHadway</author>
   <license>BSD</license>

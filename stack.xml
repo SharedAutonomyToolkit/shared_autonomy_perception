@@ -4,7 +4,10 @@
   <license>BSD</license>  
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/shared_autonomy</url>
+  <depend stack="common_msgs" /> 
   <depend stack="navigation" /> <!-- base_local_planner, costmap_2d -->
+  <depend stack="object_manipulation" /> 
   <depend stack="ros" /> <!-- roscpp -->
+  <depend stack="visualization_common" />
 
 </stack>
