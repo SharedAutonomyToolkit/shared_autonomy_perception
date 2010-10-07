@@ -40,13 +40,14 @@ geometry_msgs::PoseStamped getTargetPose(const object_manipulation_msgs::Graspab
 }
 
 // distance between two grasps
+double grasp_distance_euclidean_weight = 17.0;
 float grasp_distance(const object_manipulation_msgs::Grasp& a, const object_manipulation_msgs::Grasp& b) {
   tf::Pose a_pose, b_pose;
   tf::poseMsgToTF(a.grasp_pose, a_pose);
   tf::poseMsgToTF(b.grasp_pose, b_pose);
   double d_theta = a_pose.getRotation().angle(b_pose.getRotation());
-  double d2 = (a_pose.getOrigin() - b_pose.getOrigin()).length2();
-  return d2 + d_theta;
+  double dist = (a_pose.getOrigin() - b_pose.getOrigin()).length();
+  return grasp_distance_euclidean_weight * dist + d_theta;
 }
 
 class AugmentedGraspPlanner {
@@ -70,6 +71,7 @@ public:
   AugmentedGraspPlanner() : priv_nh_("~"), public_nh_("") {
     priv_nh_.param<std::string>("planner_service_name", grasp_planning_srv_name_, "augmented_database_grasp_planning");
     priv_nh_.param<std::string>("automated_planner_service_name", automated_planning_srv_name_, "database_grasp_planning");
+    priv_nh_.param<double>("grasp_distance_euclidean_weight", grasp_distance_euclidean_weight, 17.0); // dist is in m, d_theta in radians, so a 2cm difference = 10 degree difference
 
     grasp_planning_srv_ = priv_nh_.advertiseService(grasp_planning_srv_name_, &AugmentedGraspPlanner::graspPlanningCB, this);
   }
@@ -111,12 +113,22 @@ public:
     int selected = marker_selector.select();
     object_manipulation_msgs::Grasp selected_grasp = grasps[selected];
 
+//    for(size_t i = 0; i < count; ++i)
+//    {
+//      printf("grasp distance %d: %f\n", i, grasp_distance(grasps[i], selected_grasp));
+//    }
+
     // sort grasps by distance to selected grasp
     sort (grasps.begin(),
           grasps.end(),
           boost::bind(std::less<float>(),
                       boost::bind(&grasp_distance, _1, selected_grasp),
                       boost::bind(&grasp_distance, _2, selected_grasp)));
+
+//    for(size_t i = 0; i < count; ++i)
+//    {
+//      printf("grasp distance: %f\n", grasp_distance(grasps[i], selected_grasp));
+//    }
   }
 
 };

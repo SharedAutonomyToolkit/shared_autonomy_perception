@@ -1,0 +1,22 @@
+<launch>
+  <!-- start up empty world -->
+  <param name="/use_sim_time" value="true" />
+
+  <node name="gazebo" pkg="gazebo" type="gazebo" args="-u $(find pr2_tabletop_manipulation_gazebo_demo)/worlds/grasp.world" respawn="false" output="screen"/>
+
+  <!-- send pr2_r_arm.xml to param server -->
+  <include file="$(find pr2_gazebo)/pr2.launch" />
+
+  <!-- spawn table and tabletop object -->
+  <param name="table_description" command="$(find xacro)/xacro.py '$(find gazebo_worlds)/objects/table.urdf.xacro'" />
+  <node name="spawn_table" pkg="gazebo" type="spawn_model" args="-urdf -param table_description -model table_1" respawn="false" output="screen" />
+  <node name="spawn_object" pkg="gazebo" type="spawn_model" args="-urdf -file $(find pr2_tabletop_manipulation_gazebo_demo)/urdf/coke_can.urdf -model object_1 -x 0.7 -z 0.55" respawn="false" output="screen" />
+  <!--
+  <node name="spawn_object" pkg="pr2_tabletop_manipulation_gazebo_demo" type="spawn_object_model" args="9387 0" respawn="false" output="screen" />
+  <param name="drill_description" textfile="$(find gazebo_worlds)/objects/14_4v_cordless_drill.urdf" />
+  <node name="spawn_drill" pkg="gazebo" type="spawn_model" args="-urdf -param drill_description -model drill -z 0.55 -x 0.8" respawn="false" output="screen" />
+  -->
+
+  <include file="$(find augmented_grasp_planner)/launch/pr2_tabletop_augmented_manipulation.launch"/>
+</launch>
+
