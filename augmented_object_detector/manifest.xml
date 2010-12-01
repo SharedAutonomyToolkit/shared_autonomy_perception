@@ -1,0 +1,40 @@
+<package>
+  <description brief="augmented_object_detector">
+
+     augmented_object_detector
+
+  </description>
+  <author>Benjamin Pitzer</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/augmented_object_detector</url>
+  <depend package="actionlib"/>
+  <depend package="object_manipulation_msgs"/>
+	<depend package="tabletop_object_detector"/>
+	<depend package="tabletop_collision_map_processing"/>
+	
+	<depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="visualization_msgs"/>
+  <depend package="geometric_shapes_msgs"/>
+  <depend package="household_objects_database_msgs"/>
+
+  <depend package="tf"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="pcl_tf"/>
+
+  <depend package="opencv2"/>
+  <depend package="image_proc"/>
+  <depend package="cv_bridge" />
+  <depend package="image_transport"/>
+
+  <depend package="household_objects_database"/>
+  <depend package="tabletop_object_detector"/>
+
+  <depend package="grabcut_3d"/>
+	
+</package>
+
+

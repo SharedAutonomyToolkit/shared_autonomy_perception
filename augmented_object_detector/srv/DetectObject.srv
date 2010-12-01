@@ -1,0 +1,5 @@
+sensor_msgs/PointCloud2 cloud
+int32 num_results
+---
+augmented_object_detector/DatabaseModelComplete[] model_list
+household_objects_database_msgs/DatabaseReturnCode status
