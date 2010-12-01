@@ -2,6 +2,7 @@
   <author>Benjamin Pitzer</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/grabcut_3d</url>
   <depend package="roscpp"/>
   <depend package="opencv2"/>
   <depend package="pcl"/>
