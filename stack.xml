@@ -1,6 +1,6 @@
 <stack>
   <description brief="shared_autonomy">A stack for packages related to shared autonomy</description>
-  <author>Maintained by Charles DuHadway</author>
+  <author>Maintained by Benjamin Pitzer</author>
   <license>BSD</license>  
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/shared_autonomy</url>
