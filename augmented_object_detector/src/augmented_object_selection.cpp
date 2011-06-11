@@ -47,7 +47,7 @@
 #include <image_geometry/pinhole_camera_model.h>
 #include <pcl/ros/conversions.h>
 #include <pcl/point_types.h>
-#include <pcl_tf/transforms.h>
+#include <pcl_ros/transforms.h>
 #include <tabletop_object_detector/marker_generator.h>
 #include <tf/tf.h>
 #include <tf/transform_datatypes.h>
@@ -401,7 +401,7 @@ public:
     string err_msg;
     try
     {
-      pcl::transformPointCloud(target_frame, cloud_in,  cloud_out, listener_);
+      pcl_ros::transformPointCloud(target_frame, cloud_in,  cloud_out, listener_);
     }
     catch (tf::TransformException ex)
     {
@@ -487,7 +487,7 @@ public:
       ROS_INFO("grab_view: best fit object is %i (%s)", model.model_id, model.name.c_str());
 
       // Generate marker
-      visualization_msgs::Marker object_marker = MarkerGenerator::getFitMarker(model.mesh, model.score, quality_threshold);
+      visualization_msgs::Marker object_marker = MarkerGenerator::getFitMarker(model.mesh, model.score);
       object_marker.header = detection_cloud_msg.header;
       object_marker.color.r = 1.0;
       object_marker.color.g = 0.0;
@@ -504,8 +504,10 @@ public:
       //model is published in incoming cloud frame
       pose_message.pose.header = detection_cloud_msg.header;
       pose_message.pose = model.pose;
+      household_objects_database_msgs::DatabaseModelPoseList pose_list;
+      pose_list.model_list.push_back(pose_message);
       //transform is identity since now objects have their own reference frame
-      detection_message.models.push_back(pose_message);
+      detection_message.models.push_back(pose_list);
     }
 
     // fill service response

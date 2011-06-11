@@ -49,7 +49,7 @@
 #include <household_objects_database_msgs/GetModelMesh.h>
 #include <household_objects_database_msgs/GetModelDescription.h>
 #include <tabletop_object_detector/model_fitter.h>
-#include <tabletop_object_detector/iterative_distance_fitter_3d.h>
+#include <tabletop_object_detector/iterative_distance_fitter.h>
 #include <tabletop_object_detector/exhaustive_fit_detector.h>
 #include <tabletop_object_detector/TabletopDetectionResult.h>
 
