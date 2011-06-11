@@ -296,7 +296,7 @@ void interpolateDepthImageNearestNeighbor(Mat& depth_image)
     }
 
     // create kdtree
-    pcl::KdTreeANN<pcl::PointXY> kdtree;
+    pcl::KdTreeFLANN<pcl::PointXY> kdtree;
     std::vector<int> k_indices(1);
     std::vector<float> k_distances(1);
 
