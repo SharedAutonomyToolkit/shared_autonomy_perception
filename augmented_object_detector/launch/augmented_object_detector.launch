@@ -1,0 +1,17 @@
+<launch>
+
+    <node pkg="augmented_object_detector" name="augmented_object_detector" type="augmented_object_selection" respawn="false" output="screen">
+        <param name="use_database" value="true"/>
+        <param name="detect_object_service_name" type="str" value="/object_detector/detect_object"/>
+
+		<!--topic remapping-->
+		<remap from="image_in" to="/prosilica/image_raw" />
+		<remap from="camera_info_in" to="/prosilica/camera_info" />
+        <remap from="cloud_old_in" to="narrow_stereo_textured/points" />
+        <remap from="cloud_new_in" to="narrow_stereo_textured/points2" />
+        <remap from="object_detection_srv" to="object_detection" />
+        <remap from="markers_out" to="tabletop_detector_markers" />
+    </node>
+
+</launch>
+
