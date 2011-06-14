@@ -148,14 +148,14 @@ public:
   void imageCallback(const sensor_msgs::ImageConstPtr& msg)
   {
     sensor_msgs::CvBridge bridge;
-    try
+   /* try
     {
       image_ = bridge.imgMsgToCv(msg, "bgr8");
     }
     catch (sensor_msgs::CvBridgeException& e)
     {
       ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
-    }
+    }*/
   }
 
   /* Scales camera extrinsics by a factor to allow for conversion of camera
@@ -273,15 +273,13 @@ public:
       ROS_ERROR("Could not receive an image!");
       return false;
     }
-
     image_msg = *image_ptr;
-
-    // Convert image message to cv::Mat
-    if (image_ptr->encoding.find("bayer") != string::npos)
-      boost::const_pointer_cast<sensor_msgs::Image>(image_ptr)->encoding = "mono8";
+    boost::const_pointer_cast<sensor_msgs::Image>(image_ptr)->encoding = "mono8";*/
     IplImage* ipl_image;
     try {
-      ipl_image = img_bridge_.imgMsgToCv(image_ptr, "bgr8");
+     
+	 ipl_image = img_bridge_.imgMsgToCv(image_ptr, "bgr8");
+     
     }
     catch (sensor_msgs::CvBridgeException e) {
       ROS_ERROR("%s: Unable to convert %s image to bgr8",
@@ -289,9 +287,11 @@ public:
           image_ptr->encoding.c_str());
       return false;
     }
+    
 
     IplImage* small = cvCreateImage(cvSize(612,513), IPL_DEPTH_8U, 3);
     cvResize(ipl_image,small);
+    printf("Resize Error\n");
     image = small;
     if (image.empty()) {
       ROS_ERROR("%s: detect received empty image", node_name_.c_str());
