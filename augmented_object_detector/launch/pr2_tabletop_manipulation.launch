@@ -8,6 +8,7 @@
   <!--
   <include file="$(find household_objects_database)/launch/objects_database_remote_client.launch"/>
   -->
+ <include file="$(find kinect_launch)/openni_node_kinect_head.launch"/>
 
   <!-- alternative option: database server running on a local machine -->
   <param name="/household_objects_database/database_host" value="wgs36"/>
