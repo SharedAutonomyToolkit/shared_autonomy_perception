@@ -95,7 +95,9 @@ public:
   int num_markers_published_;
   //! The current marker being published
   int current_marker_id_;
-
+  //! Subscriber for rgbd images
+  image_transport::Subscriber image_sub_;
+  Mat image_;
 
   float quality_threshold;
   bool use_database;
@@ -135,10 +137,26 @@ public:
     ROS_INFO("grabcut_node: advertising object_detection service");
     object_detection_srv_ = nh_.advertiseService(nh_.resolveName("object_detection_srv"),
                                                   &GrabCutNode::serviceCallback, this);
+
+    std::string image_topic = nh_.resolveName("image_in");
+    image_sub_ = it.subscribe(image_topic, 1 , &GrabCutNode::imageCallback, this);
   }
 
   //! Empty stub
   ~GrabCutNode() {}
+
+  void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+  {
+    sensor_msgs::CvBridge bridge;
+    try
+    {
+      image_ = bridge.imgMsgToCv(msg, "bgr8");
+    }
+    catch (sensor_msgs::CvBridgeException& e)
+    {
+      ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
+    }
+  }
 
   /* Scales camera extrinsics by a factor to allow for conversion of camera
    * parameters between pyramid levels. */
@@ -217,9 +235,14 @@ public:
     std::string topic = nh_.resolveName("cloud_new_in");
     ROS_INFO("Waiting for a point_cloud2 on topic %s", topic.c_str());
     sensor_msgs::PointCloud2::ConstPtr cloud_msg_ptr = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(topic, nh_, ros::Duration(10.0));
-    cloud_msg = *cloud_msg_ptr;
-    pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
-    ROS_INFO("Got point cloud!");
+    if(!cloud_msg_ptr) {
+      ROS_ERROR("Could not receive a point cloud!");
+    }
+    else {
+      cloud_msg = *cloud_msg_ptr;
+      pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
+      ROS_INFO("Got point cloud!");
+    }
     return true;
   }
 
@@ -229,9 +252,14 @@ public:
     std::string camera_info_topic = nh_.resolveName("camera_info_in");
     ROS_INFO("Waiting for camera_info on topic %s", camera_info_topic.c_str());
     sensor_msgs::CameraInfoConstPtr camera_info_ptr = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_info_topic, nh_, ros::Duration(10.0));
-    camera_info_msg = *camera_info_ptr;
-    // Scale the camera info message to match the pyramid scaling
-    scaleCameraInfo(camera_info_msg, 4);
+    if(!camera_info_ptr) {
+      ROS_ERROR("Could not receive a camera info!");
+    }
+    else {
+      camera_info_msg = *camera_info_ptr;
+      // Scale the camera info message to match the pyramid scaling
+      scaleCameraInfo(camera_info_msg, 4);
+    }
     return true;
   }
 
@@ -241,6 +269,11 @@ public:
     std::string image_topic = nh_.resolveName("image_in");
     ROS_INFO("Waiting for image on topic %s", image_topic.c_str());
     sensor_msgs::ImageConstPtr image_ptr = ros::topic::waitForMessage<sensor_msgs::Image>(image_topic, nh_, ros::Duration(10.0));
+    if(!image_ptr) {
+      ROS_ERROR("Could not receive an image!");
+      return false;
+    }
+
     image_msg = *image_ptr;
 
     // Convert image message to cv::Mat
