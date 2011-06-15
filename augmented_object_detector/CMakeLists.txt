@@ -31,3 +31,4 @@ rosbuild_gensrv()
 
 rosbuild_add_executable(augmented_object_selection src/augmented_object_selection.cpp src/GC3DApplication.cpp)
 rosbuild_add_executable(object_detector src/object_detector.cpp)
+rosbuild_add_executable(test_pick_and_place src/test_pick_and_place.cpp)
