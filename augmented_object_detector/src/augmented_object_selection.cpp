@@ -56,7 +56,7 @@
 #include <tabletop_object_detector/TabletopDetectionResult.h>
 #include <tabletop_object_detector/TabletopDetection.h>
 
-#include "augmented_object_detector/GCApplication.hpp"
+#include "augmented_object_detector/GC3DApplication.hpp"
 #include "augmented_object_detector/DatabaseModelComplete.h"
 #include "augmented_object_detector/DetectObject.h"
 
@@ -232,7 +232,7 @@ public:
   bool getPointCloud(sensor_msgs::PointCloud2& cloud_msg, pcl::PointCloud<pcl::PointXYZRGB>& cloud)
   {
     // get camera info
-    std::string topic = nh_.resolveName("cloud_new_in");
+    std::string topic = nh_.resolveName("cloud_in");
     ROS_INFO("Waiting for a point_cloud2 on topic %s", topic.c_str());
     sensor_msgs::PointCloud2::ConstPtr cloud_msg_ptr = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(topic, nh_, ros::Duration(10.0));
     if(!cloud_msg_ptr) {
@@ -274,12 +274,9 @@ public:
       return false;
     }
     image_msg = *image_ptr;
-    boost::const_pointer_cast<sensor_msgs::Image>(image_ptr)->encoding = "mono8";*/
     IplImage* ipl_image;
     try {
-     
-	 ipl_image = img_bridge_.imgMsgToCv(image_ptr, "bgr8");
-     
+      ipl_image = img_bridge_.imgMsgToCv(image_ptr, "bgr8");
     }
     catch (sensor_msgs::CvBridgeException e) {
       ROS_ERROR("%s: Unable to convert %s image to bgr8",
@@ -287,23 +284,38 @@ public:
           image_ptr->encoding.c_str());
       return false;
     }
-    
-
-    IplImage* small = cvCreateImage(cvSize(612,513), IPL_DEPTH_8U, 3);
-    cvResize(ipl_image,small);
-    printf("Resize Error\n");
-    image = small;
-    if (image.empty()) {
-      ROS_ERROR("%s: detect received empty image", node_name_.c_str());
-      return false;
-    }
+    image = ipl_image;
 
     return true;
   }
 
+  bool getDepthImage(sensor_msgs::Image& image_msg, Mat& image)
+  {
+    // get image
+    std::string image_topic = nh_.resolveName("depth_image_in");
+    ROS_INFO("Waiting for image on topic %s", image_topic.c_str());
+    sensor_msgs::ImageConstPtr image_ptr = ros::topic::waitForMessage<sensor_msgs::Image>(image_topic, nh_, ros::Duration(10.0));
+    if(!image_ptr) {
+      ROS_ERROR("Could not receive an image!");
+      return false;
+    }
+    image_msg = *image_ptr;
+    IplImage* ipl_image;
+    try {
+      ipl_image = img_bridge_.imgMsgToCv(image_ptr);
+    }
+    catch (sensor_msgs::CvBridgeException e) {
+      ROS_ERROR("%s: Unable to convert %s image",
+          node_name_.c_str(),
+          image_ptr->encoding.c_str());
+      return false;
+    }
+    image = ipl_image;
+
+    return true;
+  }
 
   bool serviceCallback(TabletopDetection::Request &request, TabletopDetection::Response &response) {
-
 
     // get point cloud
     sensor_msgs::PointCloud2 cloud_msg;
@@ -315,12 +327,17 @@ public:
     Mat image;
     getImage(image_msg, image);
 
+    // get depth image
+    sensor_msgs::Image depth_image_msg;
+    Mat depth_image;
+    getDepthImage(depth_image_msg, depth_image);
+
     // get camera info
     sensor_msgs::CameraInfo camera_info_msg;
     getCameraInfo(camera_info_msg);
 
-    // Initialize GCApplication object
-    GCApplication gcapp("grab cut", image);
+    // Initialize GC3DApplication object
+    GC3DApplication gcapp("grab cut 3D", image, depth_image);
 
     // Wait for instructions
     while (ros::ok())
@@ -338,7 +355,7 @@ public:
         case 'n':
           {
             cout << "<" << gcapp.iterCount() << "... ";
-            if( gcapp.rectState() == GCApplication::SET)
+            if( gcapp.rectState() == GC3DApplication::SET)
             {
               gcapp.iterCountInc();
               cout << gcapp.iterCount() << ">" << endl;
@@ -350,7 +367,7 @@ public:
 
         // d: set default rectangle
         case 'd':
-          gcapp.rectIs(GCApplication::DEFAULT_RECT);
+          gcapp.rectIs(GC3DApplication::DEFAULT_RECT);
           break;
 
         // u: get new image from camera
@@ -366,23 +383,23 @@ public:
         // w, k, y, g, b: change background color
         case 'w':
           cout << "Setting background color to white" << endl;
-          gcapp.winColorIs(GCApplication::WHITE);
+          gcapp.winColorIs(GC3DApplication::WHITE);
           break;
         case 'k':
           cout << "Setting background color to black" << endl;
-          gcapp.winColorIs(GCApplication::BLACK);
+          gcapp.winColorIs(GC3DApplication::BLACK);
           break;
         case 'y':
           cout << "Setting background color to gray" << endl;
-          gcapp.winColorIs(GCApplication::GRAY);
+          gcapp.winColorIs(GC3DApplication::GRAY);
           break;
         case 'g':
           cout << "Setting background color to green" << endl;
-          gcapp.winColorIs(GCApplication::GREEN);
+          gcapp.winColorIs(GC3DApplication::GREEN);
           break;
         case 'b':
           cout << "Setting background color to blue" << endl;
-          gcapp.winColorIs(GCApplication::BLUE);
+          gcapp.winColorIs(GC3DApplication::BLUE);
           break;
 
         // 0, 1, 2, 3, 4, 5: change pyramid level

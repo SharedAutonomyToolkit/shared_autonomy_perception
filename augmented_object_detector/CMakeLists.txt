@@ -29,5 +29,5 @@ rosbuild_gensrv()
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-rosbuild_add_executable(augmented_object_selection src/augmented_object_selection.cpp src/GCApplication.cpp)
+rosbuild_add_executable(augmented_object_selection src/augmented_object_selection.cpp src/GC3DApplication.cpp)
 rosbuild_add_executable(object_detector src/object_detector.cpp)

@@ -5,11 +5,11 @@
         <param name="use_database" value="true"/>
         <param name="detect_object_service_name" type="str" value="/object_detector/detect_object"/>
 
-		<!--topic remapping, chsnged existing form prosilica to kinect-->
-		<remap from="image_in" to="/kinect_head/camera/rgb/image_color" />
-		<remap from="camera_info_in" to="/kinect_head/camera/rgb/camera_info" />
-        <!--remap from="cloud_old_in" to="narrow_stereo_tetured/points" /-->
-        <remap from="cloud_new_in" to="/kinect_head/camera/rgb/points" />
+    		<!--topic remapping, chsnged existing form prosilica to kinect-->
+    		<remap from="image_in" to="/kinect_head/camera/rgb/image_color" />
+    		<remap from="depth_image_in" to="/kinect_head/camera/depth/image" />
+    		<remap from="camera_info_in" to="/kinect_head/camera/rgb/camera_info" />
+        <remap from="cloud_in" to="/kinect_head/camera/rgb/points" />
         <remap from="object_detection_srv" to="/object_detection" />
         <remap from="markers_out" to="/tabletop_detector_markers" />
         <!-- Just testing changes-->
