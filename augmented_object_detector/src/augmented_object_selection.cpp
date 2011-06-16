@@ -82,6 +82,8 @@ public:
 
   // converts OpenCV to ROS images
   sensor_msgs::CvBridge img_bridge_;
+  // converts OpenCV to ROS images
+  sensor_msgs::CvBridge depth_img_bridge_;
 
   // image transport
   image_transport::ImageTransport it;
@@ -196,7 +198,7 @@ public:
     int width = cloud.width;
     int height = cloud.height;
 
-    ROS_DEBUG("grab_view: cloud size before filtering is %d",
+    ROS_INFO("grab_view: cloud size before filtering is %d",
             int(cloud.points.size()));
     pcl::PointCloud<pcl::PointXYZRGB>::VectorType::iterator iter;
     pcl::PointCloud<pcl::PointXYZRGB>::VectorType new_points;
@@ -217,7 +219,7 @@ public:
       if (mask_val > 0)
         new_points.push_back(point);
     }
-    ROS_DEBUG("grab_view: cloud size after filtering is %d",
+    ROS_INFO("grab_view: cloud size after filtering is %d",
             int(new_points.size()));
 
     cloud.width = 0;
@@ -302,7 +304,7 @@ public:
     image_msg = *image_ptr;
     IplImage* ipl_image;
     try {
-      ipl_image = img_bridge_.imgMsgToCv(image_ptr);
+      ipl_image = depth_img_bridge_.imgMsgToCv(image_ptr, "bgr8");
     }
     catch (sensor_msgs::CvBridgeException e) {
       ROS_ERROR("%s: Unable to convert %s image",
@@ -501,6 +503,11 @@ public:
 
     // Filter point cloud based on scaled camera info and mask
     ROS_INFO("Filtering point cloud with grab cut mask");
+    static const char WINDOW[] = "processPointCloud Mask";
+    cv::namedWindow(WINDOW);
+    cv::imshow(WINDOW, binary_mask*50);
+    cv::waitKey();
+
     filterPointCloud(camera_info_msg, binary_mask, converted_cloud);
     if (converted_cloud.points.empty()) {
       ROS_ERROR("grabcut_node: No points left after filtering");

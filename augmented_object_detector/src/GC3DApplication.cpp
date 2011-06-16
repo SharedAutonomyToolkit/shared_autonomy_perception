@@ -147,6 +147,7 @@ Mat GC3DApplication::binaryMask()
   std::cout << "fm_max: " << fm_max << std::endl;
   std::cout << "fm_min: " << fm_min << std::endl;
   */
+
   binaryMaskFromGCMask(mask_, bin_mask);
   /*
   cv::imwrite("/home/stm1pal/ros/stacks/bosch-ros-pkg/mas/grabcut_app/bin_mask.pbm", bin_mask);
