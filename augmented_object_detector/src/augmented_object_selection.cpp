@@ -190,7 +190,7 @@ public:
   /* Filter received point cloud based on binary mask */
   void
   filterPointCloud(const sensor_msgs::CameraInfo& info_msg,
-          const cv::Mat& mask,
+          cv::Mat& mask,
           pcl::PointCloud<pcl::PointXYZRGB>& cloud)
   {
     image_geometry::PinholeCameraModel model_;
@@ -211,16 +211,24 @@ public:
       if (isnan(point.x) || isnan(point.y) || isnan(point.z))
         continue;
       cv::Point3d p3d(point.x, point.y, point.z);
-      cv::Point2d p2d;
-      model_.project3dToPixel(p3d, p2d);
+      cv::Point2d p2d = model_.project3dToPixel(p3d);
       int x = round(p2d.x);
       int y = round(p2d.y);
       int mask_val = int(mask.at<unsigned char>(y, x));
       if (mask_val > 0)
         new_points.push_back(point);
+      //mask.at<unsigned char>(y, x) = 5;
     }
     ROS_INFO("grab_view: cloud size after filtering is %d",
             int(new_points.size()));
+
+    // Filter point cloud based on scaled camera info and mask
+
+//    static const char WINDOW[] = "processPointCloud Mask";
+//    cv::namedWindow(WINDOW);
+//    cv::imshow(WINDOW, mask*50);
+//    cv::waitKey();
+
 
     cloud.width = 0;
     cloud.height = 0;
@@ -260,7 +268,7 @@ public:
     else {
       camera_info_msg = *camera_info_ptr;
       // Scale the camera info message to match the pyramid scaling
-      scaleCameraInfo(camera_info_msg, 4);
+      //scaleCameraInfo(camera_info_msg, 4);
     }
     return true;
   }
@@ -498,16 +506,10 @@ public:
     pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
 
     // convert cloud to optical frame
-    ROS_INFO("Transforming point cloud to %s frame", image_msg.header.frame_id.c_str());
+    ROS_INFO("Transforming point cloud from %s frame to %s frame", cloud_msg.header.frame_id.c_str(), image_msg.header.frame_id.c_str());
     transformPointCloud(image_msg.header.frame_id, cloud, converted_cloud);
 
-    // Filter point cloud based on scaled camera info and mask
     ROS_INFO("Filtering point cloud with grab cut mask");
-    static const char WINDOW[] = "processPointCloud Mask";
-    cv::namedWindow(WINDOW);
-    cv::imshow(WINDOW, binary_mask*50);
-    cv::waitKey();
-
     filterPointCloud(camera_info_msg, binary_mask, converted_cloud);
     if (converted_cloud.points.empty()) {
       ROS_ERROR("grabcut_node: No points left after filtering");
@@ -520,7 +522,6 @@ public:
 
     sensor_msgs::PointCloud2 detection_cloud_msg;
     pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
-
 
     // If requested, query database for best fit model(s)
     if (use_database && !detection_cloud.points.empty())
