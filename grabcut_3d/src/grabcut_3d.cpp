@@ -120,7 +120,7 @@ float GMM::operator()( int ci, Vec3f color ) const
 {
     float res = 0;
     if( coefs[ci] > 0 )
-    {
+    {   
         if( covDeterms[ci] > std::numeric_limits<float>::epsilon() )
         {
             Vec3f diff = color;

@@ -10,7 +10,7 @@
     		<remap from="depth_image_in" to="/kinect_head/camera/depth/image" />
     		<remap from="camera_info_in" to="/kinect_head/camera/rgb/camera_info" />
         <remap from="cloud_in" to="/kinect_head/camera/rgb/points" />
-        <remap from="object_recognition_srv" to="/tabletop_object_recognition" />
+        <remap from="object_detection_srv" to="/tabletop_object_recognition" />
         <remap from="markers_out" to="/tabletop_detector_markers" />
         <!-- Just testing changes-->
     </node>
