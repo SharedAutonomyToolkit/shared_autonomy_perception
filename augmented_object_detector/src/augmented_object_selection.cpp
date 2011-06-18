@@ -96,7 +96,7 @@ public:
   //! A tf transform listener
   tf::TransformListener listener_;
   // for database fitting
-  ros::ServiceClient detect_object_client;
+  ros::ServiceClient object_recognition_client;
   image_transport::CameraPublisher mask_pub;
   //! Service server for object detection
   ros::ServiceServer object_detection_srv_;
@@ -179,10 +179,10 @@ public:
     priv_nh_.param("use_database",use_database,false);
     if (use_database) {
       ROS_INFO("grabcut_node: subscribing to object detection service");
-      string detect_object_service_name;
-      priv_nh_.param<string>("detect_object_service_name", detect_object_service_name, string("detect_object"));
-      detect_object_client = nh.serviceClient<TabletopObjectRecognition>(detect_object_service_name, true);
-      if (!detect_object_client.exists()) detect_object_client.waitForExistence();
+      string object_recognition_service_name;
+      priv_nh_.param<string>("object_recognition_srv", object_recognition_service_name, string("/tabletop_object_recognition"));
+      object_recognition_client = nh.serviceClient<TabletopObjectRecognition>(object_recognition_service_name, true);
+      if (!object_recognition_client.exists()) object_recognition_client.waitForExistence();
       quality_threshold=0.005;
     }
 
@@ -842,7 +842,7 @@ public:
      recognition_srv.request.clusters = detection_message.clusters;
      recognition_srv.request.num_models = 1;
      recognition_srv.request.perform_fit_merge = true;
-     if (!detect_object_client.call(recognition_srv))
+     if (!object_recognition_client.call(recognition_srv))
      {
        ROS_ERROR("Call to recognition service failed");
        detection_message.result = detection_message.OTHER_ERROR;
@@ -863,7 +863,7 @@ public:
 //      augmented_object_detector::DetectObject detect_object;
 //      detect_object.request.cloud = detection_cloud_msg;
 //      detect_object.request.num_results = num_results;
-//      if (!detect_object_client.call(detect_object) ||
+//      if (!object_recognition_client.call(detect_object) ||
 //          detect_object.response.status.code
 //            != detect_object.response.status.SUCCESS )
 //      {
