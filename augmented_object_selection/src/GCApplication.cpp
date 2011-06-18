@@ -1,4 +1,4 @@
-#include "augmented_object_detector/GCApplication.hpp"
+#include "augmented_object_selection/GCApplication.hpp"
 
 using namespace std;
 using namespace cv;

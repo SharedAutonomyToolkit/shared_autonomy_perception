@@ -37,12 +37,10 @@
   <!-- segmentation -->
   <!--<include file="$(find tabletop_object_detector)/launch/tabletop_segmentation.launch"/>-->
   <!-- object recognition -->
- <include file="$(find tabletop_object_detector)/launch/tabletop_object_recognition.launch"/>
+  <include file="$(find tabletop_object_detector)/launch/tabletop_object_recognition.launch"/>
   <!--complete node -->
- <!-- <node pkg="tabletop_object_detector" name="tabletop_complete_node" type="tabletop_complete_node"
-        respawn="true" output="screen"/>-->
+  <node pkg="tabletop_object_detector" name="tabletop_complete_node" type="tabletop_complete_node" respawn="true" output="screen"/>-
   
-
   <!-- tabletop collision map processing -->
   <node pkg="tabletop_collision_map_processing" name="tabletop_collision_map_processing" 
         type="tabletop_collision_map_processing_node" respawn="false" output="screen"/>

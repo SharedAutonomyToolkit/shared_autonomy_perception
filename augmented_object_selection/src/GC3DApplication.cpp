@@ -1,4 +1,4 @@
-#include "augmented_object_detector/GC3DApplication.hpp"
+#include "augmented_object_selection/GC3DApplication.hpp"
 #include "grabcut_3d/grabcut_3d.h"
 
 using namespace std;

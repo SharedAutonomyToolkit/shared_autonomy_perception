@@ -45,6 +45,7 @@
 #include <sensor_msgs/point_cloud_conversion.h>
 #include <visualization_msgs/Marker.h>
 #include <image_geometry/pinhole_camera_model.h>
+
 #include <pcl/ros/conversions.h>
 #include <pcl/point_types.h>
 #include <pcl_ros/transforms.h>
@@ -63,21 +64,16 @@
 #include <pcl/surface/convex_hull.h>
 #include <pcl/segmentation/extract_polygonal_prism_data.h>
 #include <pcl/segmentation/extract_clusters.h>
-#include <tabletop_object_detector/marker_generator.h>
+
 #include <tf/tf.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 
-#include <tabletop_object_detector/TabletopDetectionResult.h>
+#include <tabletop_object_detector/marker_generator.h>
+#include <tabletop_object_detector/TabletopSegmentation.h>
 
-#include "tabletop_object_detector/TabletopDetection.h"
-#include "tabletop_object_detector/TabletopSegmentation.h"
-#include "tabletop_object_detector/TabletopObjectRecognition.h"
-
-#include "augmented_object_detector/GC3DApplication.hpp"
-#include "augmented_object_detector/DatabaseModelComplete.h"
-#include "augmented_object_detector/DetectObject.h"
+#include "augmented_object_selection/GC3DApplication.hpp"
 
 using namespace std;
 using namespace cv;
@@ -85,7 +81,7 @@ using namespace tabletop_object_detector;
 
 class GrabCutNode
 {
-  typedef pcl::PointXYZ           Point;
+  typedef pcl::PointXYZ Point;
   typedef pcl::KdTree<Point>::Ptr KdTreePtr;
 public:
   std::string node_name_;
@@ -98,20 +94,16 @@ public:
   // for database fitting
   ros::ServiceClient object_recognition_client;
   image_transport::CameraPublisher mask_pub;
-  //! Service server for object detection
-  ros::ServiceServer object_detection_srv_;
-
+  //! Service server for object selection
+  ros::ServiceServer object_selection_srv_;
   // converts OpenCV to ROS images
   sensor_msgs::CvBridge img_bridge_;
   // converts OpenCV to ROS images
   sensor_msgs::CvBridge depth_img_bridge_;
-
   // image transport
   image_transport::ImageTransport it;
-
   // Create image and info message objects for segmentation mask topic
   sensor_msgs::Image mask_img_msg;
-
   //! Publisher for markers
   ros::Publisher marker_pub_;
   //! Used to remember the number of markers we publish so we can delete them later
@@ -120,10 +112,7 @@ public:
   int current_marker_id_;
   //! Subscriber for rgbd images
   image_transport::Subscriber image_sub_;
-  Mat image_;
 
-  float quality_threshold;
-  bool use_database;
   std::string detection_frame;
 
   //! Min number of inliers for reliable plane detection
@@ -157,8 +146,6 @@ public:
     current_marker_id_ = 1;
     marker_pub_ = nh.advertise<visualization_msgs::Marker>(nh.resolveName("markers_out"), 10);
 
-    quality_threshold=0.005;
-
     //initialize operational flags
     priv_nh_.param<int>("inlier_threshold", inlier_threshold_, 300);
     priv_nh_.param<double>("plane_detection_voxel_size", plane_detection_voxel_size_, 0.01);
@@ -172,28 +159,14 @@ public:
     priv_nh_.param<std::string>("processing_frame", processing_frame_, "");
     priv_nh_.param<double>("up_direction", up_direction_, -1.0);
 
-    // Check whether database use is requested
-    priv_nh_.param("use_database",use_database,false);
-    priv_nh_.param("detection_frame",detection_frame,string("/base_link"));
-
-    priv_nh_.param("use_database",use_database,false);
-    if (use_database) {
-      ROS_INFO("grabcut_node: subscribing to object detection service");
-      string object_recognition_service_name;
-      priv_nh_.param<string>("object_recognition_srv", object_recognition_service_name, string("/tabletop_object_recognition"));
-      object_recognition_client = nh.serviceClient<TabletopObjectRecognition>(object_recognition_service_name, true);
-      if (!object_recognition_client.exists()) object_recognition_client.waitForExistence();
-      quality_threshold=0.005;
-    }
-
     // Create image publisher for segmentation mask
     mask_pub = it.advertiseCamera( nh.getNamespace() + "/" + node_name_ + "/mask_image/image_raw", 3 );
 
-    // object detection server
+    // object selection service
     ROS_INFO("grabcut_node: advertising object_detection service");
-    object_detection_srv_ = nh_.advertiseService(nh_.resolveName("/object_detection"),
-                                                  &GrabCutNode::serviceCallback, this);
+    object_selection_srv_ = nh_.advertiseService(nh_.resolveName("object_selection_srv"), &GrabCutNode::serviceCallback, this);
 
+    // fake subscriber for kinect data
     std::string image_topic = nh_.resolveName("image_in");
     image_sub_ = it.subscribe(image_topic, 1 , &GrabCutNode::imageCallback, this);
   }
@@ -203,15 +176,6 @@ public:
 
   void imageCallback(const sensor_msgs::ImageConstPtr& msg)
   {
-    sensor_msgs::CvBridge bridge;
-   /* try
-    {
-      image_ = bridge.imgMsgToCv(msg, "bgr8");
-    }
-    catch (sensor_msgs::CvBridgeException& e)
-    {
-      ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
-    }*/
   }
 
   /* Scales camera extrinsics by a factor to allow for conversion of camera
@@ -245,16 +209,13 @@ public:
   /* Filter received point cloud based on binary mask */
   void
   filterPointCloud(const sensor_msgs::CameraInfo& info_msg,
-          cv::Mat& mask,
-          pcl::PointCloud<pcl::PointXYZRGB>& cloud)
+                   cv::Mat& mask,
+                   pcl::PointCloud<pcl::PointXYZRGB>& cloud)
   {
     image_geometry::PinholeCameraModel model_;
     model_.fromCameraInfo(info_msg);
-    int width = cloud.width;
-    int height = cloud.height;
 
-    ROS_INFO("grab_view: cloud size before filtering is %d",
-            int(cloud.points.size()));
+    ROS_INFO("grab_view: cloud size before filtering is %d", int(cloud.points.size()));
     pcl::PointCloud<pcl::PointXYZRGB>::VectorType::iterator iter;
     pcl::PointCloud<pcl::PointXYZRGB>::VectorType new_points;
     new_points.reserve(cloud.points.size());
@@ -274,8 +235,7 @@ public:
         new_points.push_back(point);
       //mask.at<unsigned char>(y, x) = 5;
     }
-    ROS_INFO("grab_view: cloud size after filtering is %d",
-            int(new_points.size()));
+    ROS_INFO("grab_view: cloud size after filtering is %d", int(new_points.size()));
 
     // Filter point cloud based on scaled camera info and mask
 
@@ -302,6 +262,7 @@ public:
     sensor_msgs::PointCloud2::ConstPtr cloud_msg_ptr = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(topic, nh_, ros::Duration(10.0));
     if(!cloud_msg_ptr) {
       ROS_ERROR("Could not receive a point cloud!");
+      return false;
     }
     else {
       cloud_msg = *cloud_msg_ptr;
@@ -319,11 +280,10 @@ public:
     sensor_msgs::CameraInfoConstPtr camera_info_ptr = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_info_topic, nh_, ros::Duration(10.0));
     if(!camera_info_ptr) {
       ROS_ERROR("Could not receive a camera info!");
+      return false;
     }
     else {
       camera_info_msg = *camera_info_ptr;
-      // Scale the camera info message to match the pyramid scaling
-      //scaleCameraInfo(camera_info_msg, 4);
     }
     return true;
   }
@@ -380,7 +340,7 @@ public:
     return true;
   }
 
-  bool serviceCallback(TabletopDetection::Request &request, TabletopDetection::Response &response) {
+  bool serviceCallback(TabletopSegmentation::Request &request, TabletopSegmentation::Response &response) {
 
     // get point cloud
     sensor_msgs::PointCloud2 cloud_msg;
@@ -489,9 +449,6 @@ public:
             cv::Mat binary_mask = gcapp.binaryMask();
 
             // process point cloud
-            // fill service response
-            TabletopDetectionResult& detection_message = response.detection;
-
             pcl::PointCloud<pcl::PointXYZRGB> cloud, detection_cloud;
             pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
 
@@ -504,12 +461,12 @@ public:
             pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
 
             // detect table
-            if(!detectTable(detection_cloud_msg, detection_message)) {
+            if(!detectTable(detection_cloud_msg, response)) {
               ROS_ERROR("Couldn't find table.");
               return false;
             }
 
-            processPointCloud(cloud_msg, image_msg, camera_info_msg, binary_mask, detection_message);
+            processPointCloud(cloud_msg, image_msg, camera_info_msg, binary_mask, response);
 
             cout << "Publishing mask image" << endl;
             // Get image header from incoming image message
@@ -689,7 +646,7 @@ public:
     return table;
   }
 
-  bool detectTable(const sensor_msgs::PointCloud2 &cloud, TabletopDetectionResult &detection_message)
+  bool detectTable(const sensor_msgs::PointCloud2 &cloud, TabletopSegmentation::Response &response)
   {
     TabletopSegmentation::Response segmentation_response;
 
@@ -757,7 +714,7 @@ public:
     if (cloud_filtered.points.size() < (unsigned int)min_cluster_size_)
     {
       ROS_INFO("Filtered cloud only has %d points", (int)cloud_filtered.points.size());
-      detection_message.result = segmentation_response.NO_TABLE;
+      response.result = segmentation_response.NO_TABLE;
       return false;
     }
 
@@ -769,7 +726,7 @@ public:
     if (cloud_downsampled.points.size() < (unsigned int)min_cluster_size_)
     {
       ROS_INFO("Downsampled cloud only has %d points", (int)cloud_downsampled.points.size());
-      detection_message.result = segmentation_response.NO_TABLE;
+      response.result = segmentation_response.NO_TABLE;
       return false;
     }
 
@@ -793,7 +750,7 @@ public:
     if (table_coefficients.values.size () <=3)
     {
       ROS_INFO("Failed to detect table in scan");
-      detection_message.result = segmentation_response.NO_TABLE;
+      response.result = segmentation_response.NO_TABLE;
       return false;
     }
 
@@ -801,7 +758,7 @@ public:
     {
       ROS_INFO("Plane detection has %d inliers, below min threshold of %d", (int)table_inliers.indices.size(),
          inlier_threshold_);
-      detection_message.result = segmentation_response.NO_TABLE;
+      response.result = segmentation_response.NO_TABLE;
       return false;
     }
 
@@ -827,93 +784,17 @@ public:
     //while also transforming them into the table's coordinate system
     if (!getPlanePoints<Point> (table_projected, table_plane_trans, table_points))
     {
-      detection_message.result = segmentation_response.OTHER_ERROR;
+      response.result = segmentation_response.OTHER_ERROR;
       return false;
     }
     ROS_INFO("Table computed");
 
-    detection_message.table = getTable<sensor_msgs::PointCloud>(cloud.header, table_plane_trans, table_points);
-    detection_message.result = segmentation_response.SUCCESS;
+    response.table = getTable<sensor_msgs::PointCloud>(cloud.header, table_plane_trans, table_points);
+    response.result = segmentation_response.SUCCESS;
     return true;
   }
 
-  bool detectObjects(TabletopDetectionResult &detection_message) {
-    tabletop_object_detector::TabletopObjectRecognition recognition_srv;
-     recognition_srv.request.table = detection_message.table;
-     recognition_srv.request.clusters = detection_message.clusters;
-     recognition_srv.request.num_models = 1;
-     recognition_srv.request.perform_fit_merge = true;
-     if (!object_recognition_client.call(recognition_srv))
-     {
-       ROS_ERROR("Call to recognition service failed");
-       detection_message.result = detection_message.OTHER_ERROR;
-       return true;
-     }
-     detection_message.models = recognition_srv.response.models;
-     detection_message.cluster_model_indices = recognition_srv.response.cluster_model_indices;
-     return true;
-   }
-
-//  bool detectObjects(const sensor_msgs::PointCloud2 &detection_cloud_msg, TabletopDetectionResult &detection_message)
-//  {
-//    // If requested, query database for best fit model(s)
-//    if (use_database && detection_cloud_msg.width*detection_cloud_msg.height > 0)
-//    {
-//      ROS_INFO("Query database for object fit");
-//      int num_results = 1;
-//      augmented_object_detector::DetectObject detect_object;
-//      detect_object.request.cloud = detection_cloud_msg;
-//      detect_object.request.num_results = num_results;
-//      if (!object_recognition_client.call(detect_object) ||
-//          detect_object.response.status.code
-//            != detect_object.response.status.SUCCESS )
-//      {
-//        ROS_ERROR("grab_view: DetectObject service call failed (error %i)", detect_object.response.status.code);
-//        return false;
-//      }
-//
-//      vector<augmented_object_detector::DatabaseModelComplete> model_list = detect_object.response.model_list;
-//      augmented_object_detector::DatabaseModelComplete& model = model_list[0];
-//
-//      ROS_INFO("grab_view: best fit object is %i (%s)", model.model_id, model.name.c_str());
-//
-//      // Generate marker
-//      visualization_msgs::Marker object_marker = MarkerGenerator::getFitMarker(model.mesh, model.score);
-//      object_marker.header = detection_cloud_msg.header;
-//      object_marker.color.r = 1.0;
-//      object_marker.color.g = 0.0;
-//      object_marker.color.b = 0.0;
-//
-//      // Get model pose
-//      geometry_msgs::PoseStamped marker_pose;
-//      listener_.transformPose("/base_link", model.pose, marker_pose);
-//      object_marker.pose = marker_pose.pose;
-//      marker_pub_.publish(object_marker);
-//
-//      household_objects_database_msgs::DatabaseModelPose pose_message;
-//      pose_message.model_id = model.model_id;
-//      //model is published in incoming cloud frame
-//      pose_message.pose.header = detection_cloud_msg.header;
-//      pose_message.pose = model.pose;
-//      household_objects_database_msgs::DatabaseModelPoseList pose_list;
-//      pose_list.model_list.push_back(pose_message);
-//      //transform is identity since now objects have their own reference frame
-//      detection_message.models.push_back(pose_list);
-//    }
-//
-//    // fill service response
-//
-//    detection_message.result = detection_message.SUCCESS;
-//    detection_message.cluster_model_indices = std::vector<int>(1, -1);
-//    detection_message.cluster_model_indices[0] = 0;
-//    sensor_msgs::PointCloud cluster;
-//    sensor_msgs::convertPointCloud2ToPointCloud(detection_cloud_msg,cluster);
-//    detection_message.clusters.push_back(cluster);
-//
-//    return true;
-//  }
-
-  bool processPointCloud(const sensor_msgs::PointCloud2& cloud_msg, const sensor_msgs::Image& image_msg, sensor_msgs::CameraInfo& camera_info_msg, cv::Mat& binary_mask, TabletopDetectionResult &detection_message)
+  bool processPointCloud(const sensor_msgs::PointCloud2& cloud_msg, const sensor_msgs::Image& image_msg, sensor_msgs::CameraInfo& camera_info_msg, cv::Mat& binary_mask, TabletopSegmentation::Response &response)
   {
     pcl::PointCloud<pcl::PointXYZRGB> cloud, converted_cloud, detection_cloud;
     pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
@@ -938,31 +819,16 @@ public:
     pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
 
     // fill service response
-    detection_message.result = detection_message.SUCCESS;
-    detection_message.cluster_model_indices = std::vector<int>(1, -1);
-    detection_message.cluster_model_indices[0] = 0;
+    response.result = response.SUCCESS;
     sensor_msgs::PointCloud cluster;
     sensor_msgs::convertPointCloud2ToPointCloud(detection_cloud_msg,cluster);
-    detection_message.clusters.push_back(cluster);
-
-    // detect objects from clusters
-    if(!detectObjects(detection_message)) {
-      ROS_ERROR("Couldn't detect any objects.");
-      return false;
-    }
+    response.clusters.push_back(cluster);
 
     // publish markers
-    publishClusterMarkers<sensor_msgs::PointCloud>(detection_message.clusters, detection_cloud_msg.header);
+    publishClusterMarkers<sensor_msgs::PointCloud>(response.clusters, detection_cloud_msg.header);
     clearOldMarkers(cloud_msg.header.frame_id);
 
     return true;
-  }
-
-  /* Helper functions */
-  void usage()
-  {
-    ROS_WARN("./grabcut_node [img fmt] [transport] camera:=<camera namespace> ");
-    exit(1);
   }
 
   //! Publishes rviz markers for the given tabletop clusters
@@ -1004,30 +870,6 @@ public:
 
 };
 
-void print_directions()
-{
-  cout << "First, select the rectangular area\n" <<
-      "Hot keys: \n"
-      "\tESC - quit the program\n"
-      "\tr - restore the original image\n"
-      "\tu - update image (get new frame from camera)\n"
-      "\tn - next iteration\n"
-      "\t0-5 - switch pyramid level for current image\n"
-      "\n"
-      "Background colors: \n"
-      "\tWhite (w), Black (k), Gray (y), Green (g), Blue (b)\n"
-      "\n"
-      "Segmentation hint controls: \n"
-      "\tleft mouse button - set rectangle\n"
-      "\n"
-      "\tCTRL+left mouse button - set GC_BGD pixels\n"
-      "\tSHIFT+left mouse button - set CG_FGD pixels\n"
-      "\n"
-      "\tCTRL+right mouse button - set GC_PR_BGD pixels\n"
-      "\tSHIFT+right mouse button - set CG_PR_FGD pixels\n";
-}
-
-
 
 int main( int argc, char** argv )
 {
@@ -1037,9 +879,6 @@ int main( int argc, char** argv )
   // Run grab cut node
   ros::NodeHandle nh;
   GrabCutNode node(node_name,nh);
-
-  // Tell user how this works
-  //print_directions();
 
   // ...and spin
   ros::spin();
