@@ -937,7 +937,15 @@ public:
     sensor_msgs::PointCloud2 detection_cloud_msg;
     pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
 
-    // detect objects
+    // fill service response
+    detection_message.result = detection_message.SUCCESS;
+    detection_message.cluster_model_indices = std::vector<int>(1, -1);
+    detection_message.cluster_model_indices[0] = 0;
+    sensor_msgs::PointCloud cluster;
+    sensor_msgs::convertPointCloud2ToPointCloud(detection_cloud_msg,cluster);
+    detection_message.clusters.push_back(cluster);
+
+    // detect objects from clusters
     if(!detectObjects(detection_message)) {
       ROS_ERROR("Couldn't detect any objects.");
       return false;
