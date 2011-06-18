@@ -488,6 +488,24 @@ public:
             // process point cloud
             // fill service response
             TabletopDetectionResult& detection_message = response.detection;
+
+            pcl::PointCloud<pcl::PointXYZRGB> cloud, detection_cloud;
+            pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
+
+            // transform cloud to detection frame
+            ROS_INFO("Transforming point cloud to %s frame", detection_frame.c_str());
+            transformPointCloud(detection_frame, cloud, detection_cloud);
+
+            // convert pointcloud to message
+            sensor_msgs::PointCloud2 detection_cloud_msg;
+            pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
+
+            // detect table
+            if(!detectTable(detection_cloud_msg, detection_message)) {
+              ROS_ERROR("Couldn't find table.");
+              return false;
+            }
+
             processPointCloud(cloud_msg, image_msg, camera_info_msg, binary_mask, detection_message);
 
             cout << "Publishing mask image" << endl;
@@ -898,12 +916,6 @@ public:
     // convert pointcloud to message
     sensor_msgs::PointCloud2 detection_cloud_msg;
     pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
-
-    // detect table
-    if(!detectTable(detection_cloud_msg, detection_message)) {
-      ROS_ERROR("Couldn't find table.");
-      return false;
-    }
 
     // detect objects
     if(!detectObjects(detection_cloud_msg, detection_message)) {
