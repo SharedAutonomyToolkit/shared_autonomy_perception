@@ -70,8 +70,10 @@
 #include <tf/transform_broadcaster.h>
 
 #include <tabletop_object_detector/TabletopDetectionResult.h>
-#include <tabletop_object_detector/TabletopDetection.h>
+
+#include "tabletop_object_detector/TabletopDetection.h"
 #include "tabletop_object_detector/TabletopSegmentation.h"
+#include "tabletop_object_detector/TabletopObjectRecognition.h"
 
 #include "augmented_object_detector/GC3DApplication.hpp"
 #include "augmented_object_detector/DatabaseModelComplete.h"
@@ -179,7 +181,7 @@ public:
       ROS_INFO("grabcut_node: subscribing to object detection service");
       string detect_object_service_name;
       priv_nh_.param<string>("detect_object_service_name", detect_object_service_name, string("detect_object"));
-      detect_object_client = nh.serviceClient<augmented_object_detector::DetectObject>(detect_object_service_name, true);
+      detect_object_client = nh.serviceClient<TabletopObjectRecognition>(detect_object_service_name, true);
       if (!detect_object_client.exists()) detect_object_client.waitForExistence();
       quality_threshold=0.005;
     }
@@ -834,64 +836,81 @@ public:
     return true;
   }
 
-  bool detectObjects(const sensor_msgs::PointCloud2 &detection_cloud_msg, TabletopDetectionResult &detection_message)
-  {
-    // If requested, query database for best fit model(s)
-    if (use_database && detection_cloud_msg.width*detection_cloud_msg.height > 0)
-    {
-      ROS_INFO("Query database for object fit");
-      int num_results = 1;
-      augmented_object_detector::DetectObject detect_object;
-      detect_object.request.cloud = detection_cloud_msg;
-      detect_object.request.num_results = num_results;
-      if (!detect_object_client.call(detect_object) ||
-          detect_object.response.status.code
-            != detect_object.response.status.SUCCESS )
-      {
-        ROS_ERROR("grab_view: DetectObject service call failed (error %i)", detect_object.response.status.code);
-        return false;
-      }
+  bool detectObjects(TabletopDetectionResult &detection_message) {
+    tabletop_object_detector::TabletopObjectRecognition recognition_srv;
+     recognition_srv.request.table = detection_message.table;
+     recognition_srv.request.clusters = detection_message.clusters;
+     recognition_srv.request.num_models = 1;
+     recognition_srv.request.perform_fit_merge = true;
+     if (!detect_object_client.call(recognition_srv))
+     {
+       ROS_ERROR("Call to recognition service failed");
+       detection_message.result = detection_message.OTHER_ERROR;
+       return true;
+     }
+     detection_message.models = recognition_srv.response.models;
+     detection_message.cluster_model_indices = recognition_srv.response.cluster_model_indices;
+     return true;
+   }
 
-      vector<augmented_object_detector::DatabaseModelComplete> model_list = detect_object.response.model_list;
-      augmented_object_detector::DatabaseModelComplete& model = model_list[0];
-
-      ROS_INFO("grab_view: best fit object is %i (%s)", model.model_id, model.name.c_str());
-
-      // Generate marker
-      visualization_msgs::Marker object_marker = MarkerGenerator::getFitMarker(model.mesh, model.score);
-      object_marker.header = detection_cloud_msg.header;
-      object_marker.color.r = 1.0;
-      object_marker.color.g = 0.0;
-      object_marker.color.b = 0.0;
-
-      // Get model pose
-      geometry_msgs::PoseStamped marker_pose;
-      listener_.transformPose("/base_link", model.pose, marker_pose);
-      object_marker.pose = marker_pose.pose;
-      marker_pub_.publish(object_marker);
-
-      household_objects_database_msgs::DatabaseModelPose pose_message;
-      pose_message.model_id = model.model_id;
-      //model is published in incoming cloud frame
-      pose_message.pose.header = detection_cloud_msg.header;
-      pose_message.pose = model.pose;
-      household_objects_database_msgs::DatabaseModelPoseList pose_list;
-      pose_list.model_list.push_back(pose_message);
-      //transform is identity since now objects have their own reference frame
-      detection_message.models.push_back(pose_list);
-    }
-
-    // fill service response
-
-    detection_message.result = detection_message.SUCCESS;
-    detection_message.cluster_model_indices = std::vector<int>(1, -1);
-    detection_message.cluster_model_indices[0] = 0;
-    sensor_msgs::PointCloud cluster;
-    sensor_msgs::convertPointCloud2ToPointCloud(detection_cloud_msg,cluster);
-    detection_message.clusters.push_back(cluster);
-
-    return true;
-  }
+//  bool detectObjects(const sensor_msgs::PointCloud2 &detection_cloud_msg, TabletopDetectionResult &detection_message)
+//  {
+//    // If requested, query database for best fit model(s)
+//    if (use_database && detection_cloud_msg.width*detection_cloud_msg.height > 0)
+//    {
+//      ROS_INFO("Query database for object fit");
+//      int num_results = 1;
+//      augmented_object_detector::DetectObject detect_object;
+//      detect_object.request.cloud = detection_cloud_msg;
+//      detect_object.request.num_results = num_results;
+//      if (!detect_object_client.call(detect_object) ||
+//          detect_object.response.status.code
+//            != detect_object.response.status.SUCCESS )
+//      {
+//        ROS_ERROR("grab_view: DetectObject service call failed (error %i)", detect_object.response.status.code);
+//        return false;
+//      }
+//
+//      vector<augmented_object_detector::DatabaseModelComplete> model_list = detect_object.response.model_list;
+//      augmented_object_detector::DatabaseModelComplete& model = model_list[0];
+//
+//      ROS_INFO("grab_view: best fit object is %i (%s)", model.model_id, model.name.c_str());
+//
+//      // Generate marker
+//      visualization_msgs::Marker object_marker = MarkerGenerator::getFitMarker(model.mesh, model.score);
+//      object_marker.header = detection_cloud_msg.header;
+//      object_marker.color.r = 1.0;
+//      object_marker.color.g = 0.0;
+//      object_marker.color.b = 0.0;
+//
+//      // Get model pose
+//      geometry_msgs::PoseStamped marker_pose;
+//      listener_.transformPose("/base_link", model.pose, marker_pose);
+//      object_marker.pose = marker_pose.pose;
+//      marker_pub_.publish(object_marker);
+//
+//      household_objects_database_msgs::DatabaseModelPose pose_message;
+//      pose_message.model_id = model.model_id;
+//      //model is published in incoming cloud frame
+//      pose_message.pose.header = detection_cloud_msg.header;
+//      pose_message.pose = model.pose;
+//      household_objects_database_msgs::DatabaseModelPoseList pose_list;
+//      pose_list.model_list.push_back(pose_message);
+//      //transform is identity since now objects have their own reference frame
+//      detection_message.models.push_back(pose_list);
+//    }
+//
+//    // fill service response
+//
+//    detection_message.result = detection_message.SUCCESS;
+//    detection_message.cluster_model_indices = std::vector<int>(1, -1);
+//    detection_message.cluster_model_indices[0] = 0;
+//    sensor_msgs::PointCloud cluster;
+//    sensor_msgs::convertPointCloud2ToPointCloud(detection_cloud_msg,cluster);
+//    detection_message.clusters.push_back(cluster);
+//
+//    return true;
+//  }
 
   bool processPointCloud(const sensor_msgs::PointCloud2& cloud_msg, const sensor_msgs::Image& image_msg, sensor_msgs::CameraInfo& camera_info_msg, cv::Mat& binary_mask, TabletopDetectionResult &detection_message)
   {
@@ -918,7 +937,7 @@ public:
     pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
 
     // detect objects
-    if(!detectObjects(detection_cloud_msg, detection_message)) {
+    if(!detectObjects(detection_message)) {
       ROS_ERROR("Couldn't detect any objects.");
       return false;
     }
