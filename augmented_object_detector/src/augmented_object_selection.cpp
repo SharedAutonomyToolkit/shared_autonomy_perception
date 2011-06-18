@@ -48,13 +48,30 @@
 #include <pcl/ros/conversions.h>
 #include <pcl/point_types.h>
 #include <pcl_ros/transforms.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/io/io.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/project_inliers.h>
+#include <pcl/surface/convex_hull.h>
+#include <pcl/segmentation/extract_polygonal_prism_data.h>
+#include <pcl/segmentation/extract_clusters.h>
 #include <tabletop_object_detector/marker_generator.h>
 #include <tf/tf.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+
 #include <tabletop_object_detector/TabletopDetectionResult.h>
 #include <tabletop_object_detector/TabletopDetection.h>
+#include "tabletop_object_detector/TabletopSegmentation.h"
 
 #include "augmented_object_detector/GC3DApplication.hpp"
 #include "augmented_object_detector/DatabaseModelComplete.h"
@@ -66,6 +83,8 @@ using namespace tabletop_object_detector;
 
 class GrabCutNode
 {
+  typedef pcl::PointXYZ           Point;
+  typedef pcl::KdTree<Point>::Ptr KdTreePtr;
 public:
   std::string node_name_;
   //! The node handle
@@ -105,6 +124,26 @@ public:
   bool use_database;
   std::string detection_frame;
 
+  //! Min number of inliers for reliable plane detection
+  int inlier_threshold_;
+  //! Size of downsampling grid before performing plane detection
+  double plane_detection_voxel_size_;
+  //! Size of downsampling grid before performing clustering
+  double clustering_voxel_size_;
+  //! Filtering of original point cloud along the z axis
+  double z_filter_min_, z_filter_max_;
+  //! Filtering of point cloud in table frame after table detection
+  double table_z_filter_min_, table_z_filter_max_;
+  //! Min distance between two clusters
+  double cluster_distance_;
+  //! Min number of points for a cluster
+  int min_cluster_size_;
+  //! Clouds are transformed into this frame before processing; leave empty if clouds
+  //! are to be processed in their original frame
+  std::string processing_frame_;
+  //! Positive or negative z is closer to the "up" direction in the processing frame?
+  double up_direction_;
+
 
   GrabCutNode(const std::string& node_name,ros::NodeHandle& nh)
   : node_name_(node_name), nh_(nh), priv_nh_("~"), listener_(ros::Duration(120.0)), it(nh)
@@ -117,6 +156,19 @@ public:
     marker_pub_ = nh.advertise<visualization_msgs::Marker>(nh.resolveName("markers_out"), 10);
 
     quality_threshold=0.005;
+
+    //initialize operational flags
+    priv_nh_.param<int>("inlier_threshold", inlier_threshold_, 300);
+    priv_nh_.param<double>("plane_detection_voxel_size", plane_detection_voxel_size_, 0.01);
+    priv_nh_.param<double>("clustering_voxel_size", clustering_voxel_size_, 0.003);
+    priv_nh_.param<double>("z_filter_min", z_filter_min_, 0.4);
+    priv_nh_.param<double>("z_filter_max", z_filter_max_, 1.25);
+    priv_nh_.param<double>("table_z_filter_min", table_z_filter_min_, 0.01);
+    priv_nh_.param<double>("table_z_filter_max", table_z_filter_max_, 0.50);
+    priv_nh_.param<double>("cluster_distance", cluster_distance_, 0.03);
+    priv_nh_.param<int>("min_cluster_size", min_cluster_size_, 300);
+    priv_nh_.param<std::string>("processing_frame", processing_frame_, "");
+    priv_nh_.param<double>("up_direction", up_direction_, -1.0);
 
     // Check whether database use is requested
     priv_nh_.param("use_database",use_database,false);
@@ -500,31 +552,274 @@ public:
     return true;
   }
 
-  bool processPointCloud(const sensor_msgs::PointCloud2& cloud_msg, const sensor_msgs::Image& image_msg, sensor_msgs::CameraInfo& camera_info_msg, cv::Mat& binary_mask, TabletopDetectionResult &detection_message)
+  /*! Assumes plane coefficients are of the form ax+by+cz+d=0, normalized */
+  tf::Transform getPlaneTransform (pcl::ModelCoefficients coeffs, double up_direction)
   {
-    pcl::PointCloud<pcl::PointXYZRGB> cloud, converted_cloud, detection_cloud;
-    pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
+    ROS_ASSERT(coeffs.values.size() > 3);
+    double a = coeffs.values[0], b = coeffs.values[1], c = coeffs.values[2], d = coeffs.values[3];
+    //asume plane coefficients are normalized
+    btVector3 position(-a*d, -b*d, -c*d);
+    btVector3 z(a, b, c);
+    //make sure z points "up"
+    ROS_DEBUG("z.dot: %0.3f", z.dot(btVector3(0,0,1)));
+    ROS_DEBUG("in getPlaneTransform, z: %0.3f, %0.3f, %0.3f", z[0], z[1], z[2]);
+    if ( z.dot( btVector3(0, 0, up_direction) ) < 0)
+    {
+      z = -1.0 * z;
+      ROS_INFO("flipped z");
+    }
+    ROS_DEBUG("in getPlaneTransform, z: %0.3f, %0.3f, %0.3f", z[0], z[1], z[2]);
 
-    // convert cloud to optical frame
-    ROS_INFO("Transforming point cloud from %s frame to %s frame", cloud_msg.header.frame_id.c_str(), image_msg.header.frame_id.c_str());
-    transformPointCloud(image_msg.header.frame_id, cloud, converted_cloud);
+    //try to align the x axis with the x axis of the original frame
+    //or the y axis if z and x are too close too each other
+    btVector3 x(1, 0, 0);
+    if ( fabs(z.dot(x)) > 1.0 - 1.0e-4) x = btVector3(0, 1, 0);
+    btVector3 y = z.cross(x).normalized();
+    x = y.cross(z).normalized();
 
-    ROS_INFO("Filtering point cloud with grab cut mask");
-    filterPointCloud(camera_info_msg, binary_mask, converted_cloud);
-    if (converted_cloud.points.empty()) {
-      ROS_ERROR("grabcut_node: No points left after filtering");
+    btMatrix3x3 rotation;
+    rotation[0] = x;  // x
+    rotation[1] = y;  // y
+    rotation[2] = z;  // z
+    rotation = rotation.transpose();
+    btQuaternion orientation;
+    rotation.getRotation(orientation);
+    return tf::Transform(orientation, position);
+  }
+
+  template <typename PointT>
+  bool getPlanePoints (const pcl::PointCloud<PointT> &table,
+           const tf::Transform& table_plane_trans,
+           sensor_msgs::PointCloud &table_points)
+  {
+    // Prepare the output
+    table_points.header = table.header;
+    table_points.points.resize (table.points.size ());
+    for (size_t i = 0; i < table.points.size (); ++i)
+    {
+      table_points.points[i].x = table.points[i].x;
+      table_points.points[i].y = table.points[i].y;
+      table_points.points[i].z = table.points[i].z;
+    }
+
+    // Transform the data
+    tf::TransformListener listener;
+    tf::StampedTransform table_pose_frame(table_plane_trans, table.header.stamp,
+                                          table.header.frame_id, "table_frame");
+    listener.setTransform(table_pose_frame);
+    std::string error_msg;
+    if (!listener.canTransform("table_frame", table_points.header.frame_id, table_points.header.stamp, &error_msg))
+    {
+      ROS_ERROR("Can not transform point cloud from frame %s to table frame; error %s",
+          table_points.header.frame_id.c_str(), error_msg.c_str());
+      return false;
+    }
+    try
+    {
+      listener.transformPointCloud("table_frame", table_points, table_points);
+    }
+    catch (tf::TransformException ex)
+    {
+      ROS_ERROR("Failed to transform point cloud from frame %s into table_frame; error %s",
+          table_points.header.frame_id.c_str(), ex.what());
+      return false;
+    }
+    table_points.header.stamp = table.header.stamp;
+    table_points.header.frame_id = "table_frame";
+    return true;
+  }
+
+  template <class PointCloudType>
+  Table getTable(std_msgs::Header cloud_header,
+                 const tf::Transform &table_plane_trans,
+                 const PointCloudType &table_points)
+  {
+    Table table;
+
+    //get the extents of the table
+    if (!table_points.points.empty())
+    {
+      table.x_min = table_points.points[0].x;
+      table.x_max = table_points.points[0].x;
+      table.y_min = table_points.points[0].y;
+      table.y_max = table_points.points[0].y;
+    }
+    for (size_t i=1; i<table_points.points.size(); ++i)
+    {
+      if (table_points.points[i].x<table.x_min && table_points.points[i].x>-3.0) table.x_min = table_points.points[i].x;
+      if (table_points.points[i].x>table.x_max && table_points.points[i].x< 3.0) table.x_max = table_points.points[i].x;
+      if (table_points.points[i].y<table.y_min && table_points.points[i].y>-3.0) table.y_min = table_points.points[i].y;
+      if (table_points.points[i].y>table.y_max && table_points.points[i].y< 3.0) table.y_max = table_points.points[i].y;
+    }
+
+    geometry_msgs::Pose table_pose;
+    tf::poseTFToMsg(table_plane_trans, table_pose);
+    table.pose.pose = table_pose;
+    table.pose.header = cloud_header;
+
+    visualization_msgs::Marker tableMarker = MarkerGenerator::getTableMarker(table.x_min, table.x_max,
+                                                                             table.y_min, table.y_max);
+    tableMarker.header = cloud_header;
+    tableMarker.pose = table_pose;
+    tableMarker.ns = "tabletop_node";
+    tableMarker.id = current_marker_id_++;
+    marker_pub_.publish(tableMarker);
+
+    return table;
+  }
+
+  bool detectTable(const sensor_msgs::PointCloud2 &cloud, TabletopDetectionResult &detection_message)
+  {
+    TabletopSegmentation::Response segmentation_response;
+
+    ROS_INFO("Starting process on new cloud");
+    ROS_INFO("In frame %s", cloud.header.frame_id.c_str());
+
+    // PCL objects
+    KdTreePtr normals_tree_, clusters_tree_;
+    pcl::VoxelGrid<Point> grid_, grid_objects_;
+    pcl::PassThrough<Point> pass_;
+    pcl::NormalEstimation<Point, pcl::Normal> n3d_;
+    pcl::SACSegmentationFromNormals<Point, pcl::Normal> seg_;
+    pcl::ProjectInliers<Point> proj_;
+    pcl::ConvexHull<Point> hull_;
+    pcl::ExtractPolygonalPrismData<Point> prism_;
+    pcl::EuclideanClusterExtraction<Point> pcl_cluster_;
+
+    // Filtering parameters
+    grid_.setLeafSize (plane_detection_voxel_size_, plane_detection_voxel_size_, plane_detection_voxel_size_);
+    grid_objects_.setLeafSize (clustering_voxel_size_, clustering_voxel_size_, clustering_voxel_size_);
+    grid_.setFilterFieldName ("z");
+    pass_.setFilterFieldName ("z");
+
+    pass_.setFilterLimits (z_filter_min_, z_filter_max_);
+    grid_.setFilterLimits (z_filter_min_, z_filter_max_);
+    grid_.setDownsampleAllData (false);
+    grid_objects_.setDownsampleAllData (false);
+
+    normals_tree_ = boost::make_shared<pcl::KdTreeFLANN<Point> > ();
+    clusters_tree_ = boost::make_shared<pcl::KdTreeFLANN<Point> > ();
+
+    // Normal estimation parameters
+    n3d_.setKSearch (10);
+    n3d_.setSearchMethod (normals_tree_);
+    // Table model fitting parameters
+    seg_.setDistanceThreshold (0.05);
+    seg_.setMaxIterations (10000);
+    seg_.setNormalDistanceWeight (0.1);
+    seg_.setOptimizeCoefficients (true);
+    seg_.setModelType (pcl::SACMODEL_NORMAL_PLANE);
+    seg_.setMethodType (pcl::SAC_RANSAC);
+    seg_.setProbability (0.99);
+
+    proj_.setModelType (pcl::SACMODEL_PLANE);
+
+    // Consider only objects in a given layer above the table
+    prism_.setHeightLimits (table_z_filter_min_, table_z_filter_max_);
+
+    // Clustering parameters
+    pcl_cluster_.setClusterTolerance (cluster_distance_);
+    pcl_cluster_.setMinClusterSize (min_cluster_size_);
+    pcl_cluster_.setSearchMethod (clusters_tree_);
+
+    // Step 1 : Filter, remove NaNs and downsample
+    pcl::PointCloud<Point> cloud_t;
+    pcl::fromROSMsg (cloud, cloud_t);
+    pcl::PointCloud<Point>::ConstPtr cloud_ptr = boost::make_shared<const pcl::PointCloud<Point> > (cloud_t);
+
+    pcl::PointCloud<Point> cloud_filtered;
+    pass_.setInputCloud (cloud_ptr);
+    pass_.filter (cloud_filtered);
+    pcl::PointCloud<Point>::ConstPtr cloud_filtered_ptr =
+      boost::make_shared<const pcl::PointCloud<Point> > (cloud_filtered);
+    ROS_INFO("Step 1 done");
+    if (cloud_filtered.points.size() < (unsigned int)min_cluster_size_)
+    {
+      ROS_INFO("Filtered cloud only has %d points", (int)cloud_filtered.points.size());
+      detection_message.result = segmentation_response.NO_TABLE;
       return false;
     }
 
-    // transform cloud to detection frame
-    ROS_INFO("Transforming point cloud to %s frame", detection_frame.c_str());
-    transformPointCloud(detection_frame, converted_cloud, detection_cloud);
+    pcl::PointCloud<Point> cloud_downsampled;
+    grid_.setInputCloud (cloud_filtered_ptr);
+    grid_.filter (cloud_downsampled);
+    pcl::PointCloud<Point>::ConstPtr cloud_downsampled_ptr =
+      boost::make_shared<const pcl::PointCloud<Point> > (cloud_downsampled);
+    if (cloud_downsampled.points.size() < (unsigned int)min_cluster_size_)
+    {
+      ROS_INFO("Downsampled cloud only has %d points", (int)cloud_downsampled.points.size());
+      detection_message.result = segmentation_response.NO_TABLE;
+      return false;
+    }
 
-    sensor_msgs::PointCloud2 detection_cloud_msg;
-    pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
+    // Step 2 : Estimate normals
+    pcl::PointCloud<pcl::Normal> cloud_normals;
+    n3d_.setInputCloud (cloud_downsampled_ptr);
+    n3d_.compute (cloud_normals);
+    pcl::PointCloud<pcl::Normal>::ConstPtr cloud_normals_ptr =
+      boost::make_shared<const pcl::PointCloud<pcl::Normal> > (cloud_normals);
+    ROS_INFO("Step 2 done");
 
+    // Step 3 : Perform planar segmentation
+    pcl::PointIndices table_inliers; pcl::ModelCoefficients table_coefficients;
+    seg_.setInputCloud (cloud_downsampled_ptr);
+    seg_.setInputNormals (cloud_normals_ptr);
+    seg_.segment (table_inliers, table_coefficients);
+    pcl::PointIndices::ConstPtr table_inliers_ptr = boost::make_shared<const pcl::PointIndices> (table_inliers);
+    pcl::ModelCoefficients::ConstPtr table_coefficients_ptr =
+      boost::make_shared<const pcl::ModelCoefficients> (table_coefficients);
+
+    if (table_coefficients.values.size () <=3)
+    {
+      ROS_INFO("Failed to detect table in scan");
+      detection_message.result = segmentation_response.NO_TABLE;
+      return false;
+    }
+
+    if ( table_inliers.indices.size() < (unsigned int)inlier_threshold_)
+    {
+      ROS_INFO("Plane detection has %d inliers, below min threshold of %d", (int)table_inliers.indices.size(),
+         inlier_threshold_);
+      detection_message.result = segmentation_response.NO_TABLE;
+      return false;
+    }
+
+    ROS_INFO ("[TableObjectDetector::input_callback] Model found with %d inliers: [%f %f %f %f].",
+        (int)table_inliers.indices.size (),
+        table_coefficients.values[0], table_coefficients.values[1],
+        table_coefficients.values[2], table_coefficients.values[3]);
+    ROS_INFO("Step 3 done");
+
+    // Step 4 : Project the table inliers on the table
+    pcl::PointCloud<Point> table_projected;
+    proj_.setInputCloud (cloud_downsampled_ptr);
+    proj_.setIndices (table_inliers_ptr);
+    proj_.setModelCoefficients (table_coefficients_ptr);
+    proj_.filter (table_projected);
+    pcl::PointCloud<Point>::ConstPtr table_projected_ptr =
+      boost::make_shared<const pcl::PointCloud<Point> > (table_projected);
+    ROS_INFO("Step 4 done");
+
+    sensor_msgs::PointCloud table_points;
+    tf::Transform table_plane_trans = getPlaneTransform (table_coefficients, up_direction_);
+    //takes the points projected on the table and transforms them into the PointCloud message
+    //while also transforming them into the table's coordinate system
+    if (!getPlanePoints<Point> (table_projected, table_plane_trans, table_points))
+    {
+      detection_message.result = segmentation_response.OTHER_ERROR;
+      return false;
+    }
+    ROS_INFO("Table computed");
+
+    detection_message.table = getTable<sensor_msgs::PointCloud>(cloud.header, table_plane_trans, table_points);
+    detection_message.result = segmentation_response.SUCCESS;
+    return true;
+  }
+
+  bool detectObjects(const sensor_msgs::PointCloud2 &detection_cloud_msg, TabletopDetectionResult &detection_message)
+  {
     // If requested, query database for best fit model(s)
-    if (use_database && !detection_cloud.points.empty())
+    if (use_database && detection_cloud_msg.width*detection_cloud_msg.height > 0)
     {
       ROS_INFO("Query database for object fit");
       int num_results = 1;
@@ -576,6 +871,45 @@ public:
     sensor_msgs::PointCloud cluster;
     sensor_msgs::convertPointCloud2ToPointCloud(detection_cloud_msg,cluster);
     detection_message.clusters.push_back(cluster);
+
+    return true;
+  }
+
+  bool processPointCloud(const sensor_msgs::PointCloud2& cloud_msg, const sensor_msgs::Image& image_msg, sensor_msgs::CameraInfo& camera_info_msg, cv::Mat& binary_mask, TabletopDetectionResult &detection_message)
+  {
+    pcl::PointCloud<pcl::PointXYZRGB> cloud, converted_cloud, detection_cloud;
+    pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
+
+    // convert cloud to optical frame
+    ROS_INFO("Transforming point cloud from %s frame to %s frame", cloud_msg.header.frame_id.c_str(), image_msg.header.frame_id.c_str());
+    transformPointCloud(image_msg.header.frame_id, cloud, converted_cloud);
+
+    ROS_INFO("Filtering point cloud with grab cut mask");
+    filterPointCloud(camera_info_msg, binary_mask, converted_cloud);
+    if (converted_cloud.points.empty()) {
+      ROS_ERROR("grabcut_node: No points left after filtering");
+      return false;
+    }
+
+    // transform cloud to detection frame
+    ROS_INFO("Transforming point cloud to %s frame", detection_frame.c_str());
+    transformPointCloud(detection_frame, converted_cloud, detection_cloud);
+
+    // convert pointcloud to message
+    sensor_msgs::PointCloud2 detection_cloud_msg;
+    pcl::toROSMsg<pcl::PointXYZRGB>(detection_cloud, detection_cloud_msg);
+
+    // detect table
+    if(!detectTable(detection_cloud_msg, detection_message)) {
+      ROS_ERROR("Couldn't find table.");
+      return false;
+    }
+
+    // detect objects
+    if(!detectObjects(detection_cloud_msg, detection_message)) {
+      ROS_ERROR("Couldn't detect any objects.");
+      return false;
+    }
 
     // publish markers
     publishClusterMarkers<sensor_msgs::PointCloud>(detection_message.clusters, detection_cloud_msg.header);
