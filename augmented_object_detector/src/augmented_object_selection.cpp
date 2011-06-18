@@ -191,7 +191,7 @@ public:
 
     // object detection server
     ROS_INFO("grabcut_node: advertising object_detection service");
-    object_detection_srv_ = nh_.advertiseService(nh_.resolveName("object_detection_srv"),
+    object_detection_srv_ = nh_.advertiseService(nh_.resolveName("/object_detection"),
                                                   &GrabCutNode::serviceCallback, this);
 
     std::string image_topic = nh_.resolveName("image_in");
@@ -238,6 +238,7 @@ public:
       const std::string& encoding)
   {
     fillImage(img_msg, encoding, image.rows, image.cols, image.step, const_cast<uint8_t*>(image.data));
+    printf("Image frame id: %s \n",img_msg.header.frame_id.c_str());	
     pub.publish(img_msg, info_msg);
   }
 

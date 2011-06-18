@@ -3,14 +3,14 @@
     <node pkg="augmented_object_detector" name="augmented_object_detector" type="augmented_object_selection" respawn="false" output="screen">
 
         <param name="use_database" value="true"/>
-        <param name="detect_object_service_name" type="str" value="/object_detector/detect_object"/>
+        <param name="object_detection_srv" type="str" value="/object_detection"/>
 
     		<!--topic remapping, chsnged existing form prosilica to kinect-->
     		<remap from="image_in" to="/kinect_head/camera/rgb/image_color" />
     		<remap from="depth_image_in" to="/kinect_head/camera/depth/image" />
     		<remap from="camera_info_in" to="/kinect_head/camera/rgb/camera_info" />
         <remap from="cloud_in" to="/kinect_head/camera/rgb/points" />
-        <remap from="object_detection_srv" to="/object_detection" />
+        <remap from="object_recognition_srv" to="/tabletop_object_recognition" />
         <remap from="markers_out" to="/tabletop_detector_markers" />
         <!-- Just testing changes-->
     </node>
