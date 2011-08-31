@@ -113,7 +113,7 @@ public:
   //! Subscriber for rgbd images
   image_transport::Subscriber image_sub_;
 
-  std::string detection_frame;
+  //std::string detection_frame;
 
   //! Min number of inliers for reliable plane detection
   int inlier_threshold_;
@@ -453,8 +453,8 @@ public:
             pcl::fromROSMsg<pcl::PointXYZRGB>(cloud_msg, cloud);
 
             // transform cloud to detection frame
-            ROS_INFO("Transforming point cloud to %s frame", detection_frame.c_str());
-            transformPointCloud(detection_frame, cloud, detection_cloud);
+            ROS_INFO("Transforming point cloud to %s frame",  processing_frame_.c_str());
+            transformPointCloud( processing_frame_, cloud, detection_cloud);
 
             // convert pointcloud to message
             sensor_msgs::PointCloud2 detection_cloud_msg;
@@ -811,8 +811,8 @@ public:
     }
 
     // transform cloud to detection frame
-    ROS_INFO("Transforming point cloud to %s frame", detection_frame.c_str());
-    transformPointCloud(detection_frame, converted_cloud, detection_cloud);
+    ROS_INFO("Transforming point cloud to %s frame",  processing_frame_.c_str());
+    transformPointCloud( processing_frame_, converted_cloud, detection_cloud);
 
     // convert pointcloud to message
     sensor_msgs::PointCloud2 detection_cloud_msg;
