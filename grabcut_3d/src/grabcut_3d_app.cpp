@@ -1,7 +1,7 @@
 #include <highgui.h>
 #include <cv.h>
 #include <iostream>
-
+#include <boost/make_shared.hpp>
 #include "pcl/point_types.h"
 #include "pcl/features/feature.h"
 #include "pcl/registration/transforms.h"
