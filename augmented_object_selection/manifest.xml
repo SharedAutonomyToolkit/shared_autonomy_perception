@@ -11,6 +11,7 @@
   <depend package="actionlib"/>
   <depend package="object_manipulation_msgs"/>
 	<depend package="tabletop_object_detector"/>
+	<depend package="tabletop_collision_map_processing"/>
 	<depend package="std_msgs"/>
   <depend package="sensor_msgs"/>
   <depend package="visualization_msgs"/>
