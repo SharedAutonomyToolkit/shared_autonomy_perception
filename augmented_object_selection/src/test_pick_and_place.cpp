@@ -8,16 +8,6 @@
 
 int main(int argc, char **argv)
 {
-#include <ros/ros.h>
-
-#include <actionlib/client/simple_action_client.h>
-#include <tabletop_object_detector/TabletopDetection.h>
-#include <tabletop_collision_map_processing/TabletopCollisionMapProcessing.h>
-#include <object_manipulation_msgs/PickupAction.h>
-#include <object_manipulation_msgs/PlaceAction.h>
-
-int main(int argc, char **argv)
-{
   //initialize the ROS node
   ros::init(argc, argv, "pick_and_place_app");
   ros::NodeHandle nh;
@@ -114,12 +104,12 @@ int main(int argc, char **argv)
   //pass the result of the tabletop detection
   processing_call.request.detection_result = detection_call.response.detection;
   //ask for the exising map and collision models to be reset
-  processing_call.request.reset_static_map = true;
+  //processing_call.request.reset_static_map = true;
   processing_call.request.reset_collision_models = true;
   processing_call.request.reset_attached_models = true;
   //ask for a new static collision map to be taken with the laser
   //after the new models are added to the environment
-  processing_call.request.take_static_collision_map = true;
+  //processing_call.request.take_static_collision_map = true;
   //ask for the results to be returned in base link frame
   processing_call.request.desired_frame = "base_link";
   if (!collision_processing_srv.call(processing_call))
@@ -150,6 +140,9 @@ int main(int argc, char **argv)
     processing_call.response.collision_support_surface_name;
   //pick up the object with the right arm
   pickup_goal.arm_name = "right_arm";
+  //specify the desired distance between pre-grasp and final grasp
+  //pickup_goal.desired_approach_distance = 0.1;
+  //pickup_goal.min_approach_distance = 0.05;
   //we will be lifting the object along the "vertical" direction
   //which is along the z axis in the base_link frame
   geometry_msgs::Vector3Stamped direction;
@@ -184,13 +177,12 @@ int main(int argc, char **argv)
 
   //remember where we picked the object up from
   geometry_msgs::PoseStamped pickup_location;
-  if (processing_call.response.graspable_objects.at(0).type ==
-      object_manipulation_msgs::GraspableObject::DATABASE_MODEL)
+  if (processing_call.response.graspable_objects.at(0).potential_models.size() > 0)
   {
     //for database recognized objects, the location of the object
     //is encapsulated in GraspableObject the message
     pickup_location =
-      processing_call.response.graspable_objects.at(0).model_pose.pose;
+      processing_call.response.graspable_objects.at(0).potential_models.at(0).pose;
   }
   else
   {
@@ -212,7 +204,7 @@ int main(int argc, char **argv)
   ROS_INFO("Calling the place action");
   object_manipulation_msgs::PlaceGoal place_goal;
   //place at the prepared location
-  place_goal.place_pose = place_location;
+  place_goal.place_locations.push_back(place_location);
   //the collision names of both the objects and the table
   //same as in the pickup action
   place_goal.collision_object_name =
@@ -262,4 +254,3 @@ int main(int argc, char **argv)
   ROS_INFO("Success! Object moved.");
   return 0;
 }
-
