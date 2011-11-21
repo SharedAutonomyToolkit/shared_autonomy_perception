@@ -241,8 +241,8 @@ TableDetector::getTable(const std_msgs::Header& cloud_header, const tf::Transfor
   geometry_msgs::Pose table_pose;
   tf::poseTFToMsg(table_plane_trans, table_pose);
   table.pose.pose = table_pose;
-  table.pose.header = cloud_header;
-
+  table.pose.header.frame_id = cloud_header.frame_id;
+  table.pose.header.stamp = ros::Time::now();
   return table;
 }
 
@@ -255,8 +255,8 @@ TableDetector::getTable(const std_msgs::Header& cloud_header, const tf::Transfor
 visualization_msgs::Marker TableDetector::getTableMarker(const tabletop_object_detector::Table& table)
 {
   visualization_msgs::Marker marker;
-
-  marker.header = table.pose.header;
+  marker.header.frame_id = table.pose.header.frame_id;
+  marker.header.stamp = ros::Time::now();
   marker.pose = table.pose.pose;
   marker.ns = "table_detector";
   marker.id = current_marker_id_++;
@@ -346,7 +346,8 @@ bool TableDetector::getPlanePoints (const pcl::PointCloud<Point> &table,
                                      sensor_msgs::PointCloud &table_points)
 {
   // Prepare the output
-  table_points.header = table.header;
+  table_points.header.frame_id = table.header.frame_id;
+  table_points.header.stamp = table.header.stamp;
   table_points.points.resize (table.points.size ());
   for (size_t i = 0; i < table.points.size (); ++i)
   {
@@ -377,7 +378,7 @@ bool TableDetector::getPlanePoints (const pcl::PointCloud<Point> &table,
         table_points.header.frame_id.c_str(), ex.what());
     return false;
   }
-  table_points.header.stamp = table.header.stamp;
+  table_points.header.stamp = ros::Time::now();
   table_points.header.frame_id = "table_frame";
   return true;
 }

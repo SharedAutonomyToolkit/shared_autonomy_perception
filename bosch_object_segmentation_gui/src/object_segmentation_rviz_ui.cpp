@@ -512,7 +512,7 @@ void ObjectSegmentationRvizUI::reconstructAndClusterPointCloud( ObjectSegmentati
   clusters_.clear();
   clusters_.resize(1);
   clusters_[0].header.frame_id = current_point_cloud_.header.frame_id;
-  clusters_[0].header.stamp = ros::Time::now();
+  clusters_[0].header.stamp = ros::Time(0);
   clusters_[0].points.reserve(1000);
 
   for(unsigned int x=0; x<current_point_cloud_.width; ++x)
