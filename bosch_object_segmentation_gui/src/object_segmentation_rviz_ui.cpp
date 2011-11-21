@@ -77,6 +77,9 @@ namespace bosch_object_segmentation_gui
 static const char
     * HELP_TEXT =
         "Left Mouse Button: Drag a rectangle around an object to segment it. \n\
+         SHIFT+Left Mouse Button: Mark pixel belonging to the object. \n\
+         CTRL+Left Mouse Button: Mark pixel belonging to the background. \n\
+         \n\
          Segment Button: Perform Segmentation. \n\
          Reset Button: Reset Segmentation. \n\
          Cancel Button: Cancel Segmentation. \n\
