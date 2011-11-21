@@ -68,7 +68,6 @@ class WindowManagerInterface;
 class RenderPanel;
 }
 
-
 namespace bosch_object_segmentation_gui {
   
   class ObjectSegmentationRvizUI : public ObjectSegmentationFrame
@@ -97,20 +96,11 @@ namespace bosch_object_segmentation_gui {
   
     virtual void onRenderWindowMouseEvents( wxMouseEvent& event );
 
+    // button events
     virtual void acceptButtonClicked( wxCommandEvent& );
     virtual void cancelButtonClicked( wxCommandEvent& );
-
     virtual void resetButtonClicked( wxCommandEvent& );
     virtual void segmentButtonClicked( wxCommandEvent& );
-
-    virtual void withSurfaceChecked( wxCommandEvent& event ) ;
-    virtual void withDisparityChecked( wxCommandEvent& event ) ;
-    virtual void withColorChecked( wxCommandEvent& event ) ;
-    virtual void withHolesChecked( wxCommandEvent& event ) ;
-    virtual void uniformChecked( wxCommandEvent& event ) ;
-
-    virtual void gradWeightChanged( wxScrollEvent& event );
-    
 
     //cleanup ogre scene, hide window
     void cleanupAndHide();
@@ -161,9 +151,7 @@ namespace bosch_object_segmentation_gui {
     bool convertMatToImageMessage(const Mat& image, sensor_msgs::Image& image_msg);
     // update display image
     void updateImageOverlay();
-
-    void segment();
-    void reset();
+    // reset internal state
     void resetVars( );
 
 
@@ -185,9 +173,6 @@ namespace bosch_object_segmentation_gui {
     
     /** Point clusters */
     std::vector<sensor_msgs::PointCloud> clusters_;
-    
-    /** Point belonging to table plane*/
-    sensor_msgs::PointCloud table_points_;
     
     //! Publisher for markers
     ros::Publisher marker_pub_;

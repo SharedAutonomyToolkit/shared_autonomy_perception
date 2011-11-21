@@ -70,23 +70,17 @@
 
 namespace enc = sensor_msgs::image_encodings;
 
-// Does not work right now, probably colliding with OGRE in Rviz
-//#define USE_CUDA
-
-#define MAX_FG 6
 
 namespace bosch_object_segmentation_gui
 {
 
-typedef pcl::PointXYZ PCL_Point;
-
 static const char
     * HELP_TEXT =
-        "Left Mouse Button: Click on objects or drag a rectangle to segment them. \n\
-     Segment Button: Start Segmentation. \n\
-     Reset Button: Reset Segmentation and Seeds. \n\
-     Cancel Button: Cancel Segmentation. \n\
-     OK Button: Accept Segmentation. ";
+        "Left Mouse Button: Drag a rectangle around an object to segment it. \n\
+         Segment Button: Perform Segmentation. \n\
+         Reset Button: Reset Segmentation. \n\
+         Cancel Button: Cancel Segmentation. \n\
+         OK Button: Accept Segmentation. ";
 
 ObjectSegmentationRvizUI::ObjectSegmentationRvizUI(
     rviz::VisualizationManager *visualization_manager ) :
@@ -178,13 +172,10 @@ void ObjectSegmentationRvizUI::startActionServer( ros::NodeHandle &node_handle )
   ROS_INFO("Starting ObjectSegmentationGuiAction server.");
 
   //create non-threaded action server
-  object_segmentation_server_ = new actionlib::SimpleActionServer<
-      ObjectSegmentationGuiAction>(node_handle, "segmentation_popup", false);
+  object_segmentation_server_ = new actionlib::SimpleActionServer< ObjectSegmentationGuiAction>(node_handle, "segmentation_popup", false);
 
-  object_segmentation_server_->registerGoalCallback(boost::bind(
-      &ObjectSegmentationRvizUI::acceptNewGoal, this));
-  object_segmentation_server_->registerPreemptCallback(boost::bind(
-      &ObjectSegmentationRvizUI::preempt, this));
+  object_segmentation_server_->registerGoalCallback(boost::bind(&ObjectSegmentationRvizUI::acceptNewGoal, this));
+  object_segmentation_server_->registerPreemptCallback(boost::bind(&ObjectSegmentationRvizUI::preempt, this));
 
   object_segmentation_server_->start();
 }
@@ -361,7 +352,6 @@ void ObjectSegmentationRvizUI::resetVars()
     clusters_[i].points.clear();
 
   clusters_.clear();
-  table_points_.points.clear();
 
   image_overlay_->setImage(current_image_);
   image_overlay_->update();
@@ -496,11 +486,6 @@ void ObjectSegmentationRvizUI::cancelButtonClicked(wxCommandEvent&)
 
 void ObjectSegmentationRvizUI::resetButtonClicked( wxCommandEvent& )
 {
-  reset( );
-}
-
-void ObjectSegmentationRvizUI::reset( )
-{
   object_segmenter_->initializedIs(false);
   image_overlay_->clear();
 
@@ -508,11 +493,6 @@ void ObjectSegmentationRvizUI::reset( )
 }
 
 void ObjectSegmentationRvizUI::segmentButtonClicked( wxCommandEvent& )
-{
-  segment();
-}
-
-void ObjectSegmentationRvizUI::segment()
 {
   if( object_segmenter_->rectState() == GrabCut3DObjectSegmenter::SET)
   {
@@ -525,35 +505,6 @@ void ObjectSegmentationRvizUI::segment()
 
   // only if segmentation is ran once labeling can be accepted
   accept_button_->Enable(true);
-}
-
-void ObjectSegmentationRvizUI::withSurfaceChecked( wxCommandEvent& event )
-{
-  reset();
-}
-
-void ObjectSegmentationRvizUI::withDisparityChecked( wxCommandEvent& event )
-{
-  reset();
-}
-
-void ObjectSegmentationRvizUI::withColorChecked( wxCommandEvent& event )
-{
-  reset();
-}
-
-void ObjectSegmentationRvizUI::withHolesChecked( wxCommandEvent& event )
-{
-  reset();
-}
-
-void ObjectSegmentationRvizUI::uniformChecked( wxCommandEvent& event )
-{
-  reset();
-}
-
-void ObjectSegmentationRvizUI::gradWeightChanged( wxScrollEvent& event )
-{
 }
 
 void ObjectSegmentationRvizUI::reconstructAndClusterPointCloud( ObjectSegmentationGuiResult &result)
