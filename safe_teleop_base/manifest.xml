@@ -2,7 +2,7 @@
   <description brief="safe_teleop_base">
      This package provides automatic collision avoidance and is intended to be used for safer teleoperation of a robot base.
   </description>
-  <author>Charles DuHadway</author>
+  <author>Charles DuHadway (maintained by Benjamin Pitzer)</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/safe_teleop_base</url>

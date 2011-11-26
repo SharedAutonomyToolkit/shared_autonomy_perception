@@ -2,7 +2,7 @@
   <description brief="safe_teleop_pr2">
      Launch files for running safe_teleop_base on pr2
   </description>
-  <author>Charles DuHadway</author>
+  <author>Charles DuHadway (maintained by Benjamin Pitzer)</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/safe_teleop_pr2</url>

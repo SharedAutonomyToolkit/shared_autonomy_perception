@@ -23,6 +23,8 @@
   <depend package="cv_bridge" />
   <depend package="image_transport"/>
   <depend package="grabcut_3d"/>	
+  <depend package="tabletop_collision_map_processing"/>	
+  
 </package>
 
 

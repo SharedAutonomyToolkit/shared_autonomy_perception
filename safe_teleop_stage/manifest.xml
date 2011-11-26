@@ -2,7 +2,7 @@
   <description brief="safe_teleop_stage">
      Demo of safe_teleop in stage
   </description>
-  <author>Charles DuHadway</author>
+  <author>Charles DuHadway (maintained by Benjamin Pitzer)</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/safe_teleop_stage</url>
