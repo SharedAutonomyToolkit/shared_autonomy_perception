@@ -1,0 +1,12 @@
+#goal
+sensor_msgs/Image orig_img
+---
+#result
+std_msgs/Int16 min_row
+std_msgs/Int16 max_row
+std_msgs/Int16 min_col
+std_msgs/Int16 max_col
+---
+#feedback
+
+
