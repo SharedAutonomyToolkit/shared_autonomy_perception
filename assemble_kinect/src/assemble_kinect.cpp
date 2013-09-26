@@ -10,7 +10,7 @@
 
 using namespace sensor_msgs;
 
-typedef message_filters::sync_policies::ApproximateTime<Image, Image, CameraInfo, PointCloud2> sync_policy;
+typedef message_filters::sync_policies::ApproximateTime<Image, Image, CameraInfo, PointCloud2> KinectSyncPolicy;
 
 class KinectAssembler {
 
@@ -22,11 +22,16 @@ private:
   
   ros::ServiceServer kinect_srv_;
 
+  message_filters::Subscriber<Image> image_sub_;
+  message_filters::Subscriber<Image> depth_sub_;
+  message_filters::Subscriber<CameraInfo> info_sub_;
+  message_filters::Subscriber<PointCloud2> points_sub_;
+
+  message_filters::Synchronizer<KinectSyncPolicy> sync_;
+
   // ------------- Callbacks --------------
   void approxCB(const ImageConstPtr& image, const ImageConstPtr& depth, 
 		const CameraInfoConstPtr& cam_info, const PointCloud2ConstPtr& points);
-  void exactCB(const ImageConstPtr& depth, const CameraInfoConstPtr& cam_info, 
-	       const PointCloud2ConstPtr& points);
   bool serviceCB(shared_autonomy_msgs::KinectAssembly::Request &req,
 		 shared_autonomy_msgs::KinectAssembly::Response &res);
   
@@ -35,6 +40,7 @@ private:
   Image depth_;
   CameraInfo info_;
   PointCloud2 points_;
+  shared_autonomy_msgs::KinectAssembly::Response resp_;
   // TODO: Do I need any mutexes here s.t. I can't accidentally respond 
   // to a service request halfway through updating the data?
 
@@ -45,24 +51,19 @@ public:
 
 };
 
-KinectAssembler::KinectAssembler() : root_nh_(""), priv_nh_("~") {
+// TODO: Is this good practice to init everything like this?
+// TODO: parameterize the camera that we're listening to!!
+KinectAssembler::KinectAssembler() : 
+  root_nh_(""), priv_nh_("~"),
+  image_sub_(root_nh_, "/camera/rgb/image_color", 1),
+  depth_sub_(root_nh_, "/camera/depth_registered/image", 1),
+  info_sub_(root_nh_, "/camera/depth_registered/camera_info", 1),
+  points_sub_(root_nh_, "/camera/depth_registered/points", 1),
+  sync_(KinectSyncPolicy(10), image_sub_, depth_sub_, info_sub_, points_sub_) {
 
-  message_filters::Subscriber<Image> image_sub(root_nh_, "/camera/rgb/image_color", 1);
-  message_filters::Subscriber<Image> depth_sub(root_nh_, "/camera/depth_registered/image", 1);
-  message_filters::Subscriber<CameraInfo> info_sub(root_nh_, "/camera/depth_registered/camera_info", 1);
-  message_filters::Subscriber<PointCloud2> points_sub(root_nh_, "/camera/depth_registered/points", 1);
+  sync_.registerCallback(boost::bind(&KinectAssembler::approxCB, this, _1, _2, _3, _4));
 
-  message_filters::Synchronizer<sync_policy> sync(sync_policy(10), image_sub, 
-						  depth_sub, info_sub, points_sub);
-  //sync.registerCallback(boost::bind(&approxCB, _1, _2, _3, _4));
-
-  message_filters::TimeSynchronizer<Image, CameraInfo, PointCloud2> sync2(depth_sub, 
-									  info_sub, points_sub, 10);
-  //sync2.registerCallback(boost::bind(&exactCB, _1, _2, _3));
-
-
-
-  // TODO: rgbd_assembler had something like "revolveName" here ...
+  // TODO: rgbd_assembler had something like "resolveName" here ...
   kinect_srv_ = root_nh_.advertiseService("assemble_kinect", &KinectAssembler::serviceCB, this);
   ROS_INFO("KinectAssembler started");
 
@@ -71,19 +72,19 @@ KinectAssembler::KinectAssembler() : root_nh_(""), priv_nh_("~") {
 KinectAssembler::~KinectAssembler() {
 }
 
-void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& depth, const CameraInfoConstPtr& cam_info, const PointCloud2ConstPtr& points) {
+// TODO: Do I want fancier logic here where we can only send a given set of data once?
+void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& depth, const CameraInfoConstPtr& info, const PointCloud2ConstPtr& points) {
   //ROS_INFO("assemble_kinect callback called!");
-
+  resp_.image = *image;
+  resp_.depth = *depth;
+  resp_.info = *info;
+  resp_.points = *points;
 }
 
-void KinectAssembler::exactCB(const ImageConstPtr& depth, const CameraInfoConstPtr& cam_info, const PointCloud2ConstPtr& points) {
-
-  //ROS_INFO("assemble_kinect callback called, w/o rgb image!");
-}
-
+// TODO: need to at least check that we've correctly initialized the data ...
 bool KinectAssembler::serviceCB(shared_autonomy_msgs::KinectAssembly::Request &req,
 	       shared_autonomy_msgs::KinectAssembly::Response &res) {
-
+  res = resp_;
   ROS_INFO("service callback called!");
   return true;
 }
