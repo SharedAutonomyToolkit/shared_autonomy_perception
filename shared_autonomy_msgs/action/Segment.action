@@ -1,10 +1,9 @@
 #goal
-sensor_msgs/Image orig_img		# RGB image
-sensor_msgs/PointCloud2 orig_points 	# colored point-cloud
+sensor_msgs/Image image		# RGB image
+sensor_msgs/Image depth  	# depth image
 ---
 #result
 sensor_msgs/Image mask			# mask of points in/out of the image
-sensor_msgs/PointCloud2 object_points	# points that are in foreground
 ---
 #feedback
 std_msgs/Int32 count
