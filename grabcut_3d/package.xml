@@ -1,0 +1,27 @@
+<package>
+  <name>grabcut_3d</name>
+  <version>0.0.1</version>
+  <description>Library wrapping around the GrabCut algorithm.</description>
+  <author>Benjamin Pitzer, Laura Lindzey</author>
+  <maintainer email="lindzey@gmail.com">Laura Lindzey</maintainer>
+  <license>BSD</license>
+
+  <url>http://ros.org/wiki/grabcut_3d</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>opencv2</build_depend>
+  <build_depend>pcl</build_depend>
+  <build_depend>pcl_ros</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>opencv2</run_depend>
+  <run_depend>pcl</run_depend>
+  <run_depend>pcl_ros</run_depend>
+
+  <export>
+    <cpp cflags="-I${prefix}/include"  
+         lflags="-L${prefix}/lib -lgrabcut3d"/>
+  </export>
+</package>
