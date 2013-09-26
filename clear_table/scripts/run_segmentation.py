@@ -22,6 +22,7 @@ class RunSegmentation():
         self.kinect_client = rospy.ServiceProxy('assemble_kinect', KinectAssembly)
         self.segment_client = actionlib.SimpleActionClient('/ben_segmentation_node', SegmentAction)
         self.segment_client.wait_for_server()
+        self.mask = None
 
     def get_data(self):
         resp = self.kinect_client()

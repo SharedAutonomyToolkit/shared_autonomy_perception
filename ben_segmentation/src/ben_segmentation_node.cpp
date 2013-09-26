@@ -1,93 +1,134 @@
 #include <ros/ros.h>
+#include <actionlib/client/simple_action_client.h>
 #include <actionlib/server/simple_action_server.h>
+#include <shared_autonomy_msgs/BoundingBoxAction.h>
 #include <shared_autonomy_msgs/SegmentAction.h>
 
 class BenSegmentation {
 
 protected:
   ros::NodeHandle nh_;
-  actionlib::SimpleActionServer<shared_autonomy_msgs::SegmentAction> as_;
+  actionlib::SimpleActionServer<shared_autonomy_msgs::SegmentAction> segment_server_;
+  actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   std::string action_name_;
   shared_autonomy_msgs::SegmentFeedback feedback_;
-  shared_autonomy_msgs::SegmentResult result_;
+  shared_autonomy_msgs::SegmentResult segmentation_result_;
+  bool bb_done_; 
 
 public:
-  BenSegmentation(std::string name);
+  BenSegmentation(std::string segment_name, std::string bb_name);
   ~BenSegmentation(void);
-  void executeCB(const shared_autonomy_msgs::SegmentGoalConstPtr &goal);
+  void segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &goal);
+  void bbDoneCB(const actionlib::SimpleClientGoalState& state, const shared_autonomy_msgs::BoundingBoxResultConstPtr& result);
+  //  void bbDoneCB(const actionlib::SimpleClientGoalState& state, const shared_autonomy_msgs::BoundingBoxResult& result);
 
 };
 
-BenSegmentation::BenSegmentation(std::string name)  : 
-  as_(nh_, name, boost::bind(&BenSegmentation::executeCB, this, _1), false), 
-  action_name_(name) 
+BenSegmentation::BenSegmentation(std::string segment_name, std::string bb_name)  : 
+  segment_server_(nh_, segment_name, boost::bind(&BenSegmentation::segmentExecuteCB, this, _1), false), 
+  bb_client_(bb_name, true), 
+  action_name_(segment_name) 
 {
-  as_.start();
+  segment_server_.start();
+
 }
 
 BenSegmentation::~BenSegmentation(void) {
 
 }
 
-void BenSegmentation::executeCB(const shared_autonomy_msgs::SegmentGoalConstPtr &goal) {
-  // flag for whether we broke out of one of the loops thanks to preemption
-  bool preempted = false;
-  // how long to sleep while waiting for feedback / checking for preemption
-  ros::Rate rr(1.0);
+void BenSegmentation::bbDoneCB(const actionlib::SimpleClientGoalState& state, const shared_autonomy_msgs::BoundingBoxResultConstPtr& result) {
+  ROS_INFO("bbDoneCB called!");
+  bb_done_ = true;
+}
 
-  feedback_.count = std_msgs::Int32();
-  feedback_.count.data = 0;
-  // TODO: this is where I'd make the first call to the HMI actionserver
+  // TODO: This needs some sub-functions...
+  // * obtain bounding_box
+  // * bbox bounds to mask
+  // * obtain labels/acceptance
+  // * update mask w/ labels
+void BenSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal) {
 
-  for(int ii = 1; ii < 10; ii++) {
-    // check for/handle preemption
-    if(as_.isPreemptRequested() or !ros::ok()) {
-      ROS_INFO("%s preempted", action_name_.c_str());
-      // TODO: pass preempt along to the HMI actionserver, wait for that ...
-      as_.setPreempted();
-      preempted = true;
-      break;
-    }
+  // Check if HMI server is up; if not, we can't do segmentation
+  bool hmi_ready = bb_client_.waitForServer(ros::Duration(15.0));
+  if(!hmi_ready) {
+    segment_server_.setAborted();
+    return;
+  }
 
-    // update feedback
-    feedback_.count.data = feedback_.count.data + 1;
-    as_.publishFeedback(feedback_);
+  ROS_INFO("ben_segmentation got HMI server!");
 
+  //At this point, goal is NOT done; will be reset by done_cb
+  bb_done_ = false;
+  // whether a preempt has been requested
+  bool segment_preempted = false;
+
+  // Package up segmentation goal for the HMI, and send it out
+  shared_autonomy_msgs::BoundingBoxGoal bb_goal;
+  shared_autonomy_msgs::BoundingBoxResult bb_result;
+  bb_goal.image = segment_goal->image;
+  bb_client_.sendGoal(bb_goal, boost::bind(&BenSegmentation::bbDoneCB, this, _1, _2));
+  //bb_client_.sendGoal(bb_goal, boost::bind(&BenSegmentation::bbDoneCB, this, _1, _2));
+
+  ROS_INFO("ben_segmentation sent goal");
+
+  //feedback_.count = std_msgs::Int32();
+  //feedback_.count.data = 0;
+
+  // wait for bounding box result OR preemption
+  ros::Rate rr(0.1);
+  while (!bb_done_ and ros::ok() and !segment_preempted) {
+    // TODO: do I want to publish any feedback here?
+    //feedback_.count.data = feedback_.count.data + 1;
+    //segment_server_.publishFeedback(feedback_);
+
+    segment_preempted = segment_server_.isPreemptRequested();
     rr.sleep();
-  }
+  } 
 
-  if(preempted) {
-    return;
-  }
+  ROS_INFO("ben_segmentation broke out of loop waiting for bbox result");
 
-  /**
-  // TODO: do first segmentation based on that mask
-  
-  // TODO: make 2nd call to HMI actionserver!
-  bool segmentation_accepted = false;
-  while (!segmentation_accpted) {
-    // TODO: actionlib service call to HMI server for feedback/acceptance
-    for (int ii = 1; ii < 10; ii++) {
-
+  if(bb_done_) {
+    if(bb_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+      // TODO: in future, this would be the only state that continues to the next
+      // segmentation step; the rest would return a preempted/aborted state
+      ROS_INFO("ben_segmentation's bbox client returned successfully");
+      bb_result = *bb_client_.getResult();
+      ROS_INFO("coords are: %d, %d, %d, %d", 
+	       bb_result.min_col.data, bb_result.max_col.data,
+	       bb_result.min_row.data, bb_result.max_row.data);
     }
-    // TODO: update segmentation_accepted based on the feedback received
+    else { // preempted, aborted, rejected, etc. ...
+      ROS_INFO("ben_segmentation bbox client returned UNsuccessfully");
+      segment_server_.setAborted();
+      return;
+    }
   }
-
-  if(preempted) {
+  else if (segment_preempted) {
+    ROS_INFO("ben_segmentation - preempt requested");
+    //request preempt 
+    bb_client_.cancelGoal();
+    bb_client_.waitForResult(ros::Duration(15.0));
+    segment_server_.setPreempted();
     return;
   }
-  **/
+  else {
+    // Only way to get here should be if !ros::ok(), in which case we also quit
+    ROS_INFO("%s quitting b/c ros::ok() false.", action_name_.c_str());
+    return;
+  }
 
-  // finally, return the segmentation!
-  result_.mask = sensor_msgs::Image();
+  // Only way to be here is if the bbox succeeded, and the segmentation result was
+  // published; in future, will continue work w/ the mask before returning / setting result
+  segmentation_result_.mask = sensor_msgs::Image();
   ROS_INFO("%s succeeded.", action_name_.c_str());
-  as_.setSucceeded(result_); 
-
+  segment_server_.setSucceeded(segmentation_result_);
+  
 }
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "ben_segmentation_node");
-  BenSegmentation segmenter(ros::this_node::getName());
+  BenSegmentation segmenter(ros::this_node::getName(), "/get_bounding_box");
   ros::spin();
   return 0;
 }
