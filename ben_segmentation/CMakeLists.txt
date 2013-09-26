@@ -49,10 +49,11 @@ find_package(catkin REQUIRED COMPONENTS actionlib)# shared_autonomy_msgs)
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
+# This only matters if anothe rpackage includes this one
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ben_segmentation
-# CATKIN_DEPENDS actionlib roscpp shared_autonomy_msgs
+#  CATKIN_DEPENDS actionlib roscpp shared_autonomy_msgs
 #  DEPENDS system_lib
 )
 
@@ -77,6 +78,7 @@ add_executable(ben_segmentation_node src/ben_segmentation_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
+# This fixes 
 add_dependencies(ben_segmentation_node shared_autonomy_msgs_gencpp)
 
 ## Specify libraries to link a library or executable target against
