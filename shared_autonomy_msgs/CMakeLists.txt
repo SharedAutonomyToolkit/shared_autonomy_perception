@@ -4,7 +4,7 @@ project(shared_autonomy_msgs)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS message_generation sensor_msgs)
+find_package(catkin REQUIRED COMPONENTS message_generation sensor_msgs actionlib_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -18,6 +18,11 @@ find_package(catkin REQUIRED COMPONENTS message_generation sensor_msgs)
 #######################################
 ## Declare ROS messages and services ##
 #######################################
+
+add_action_files(
+  DIRECTORY action
+  FILES Segment.action BoundingBox.action
+)
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
@@ -34,8 +39,7 @@ add_service_files(
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
-   DEPENDENCIES
-   sensor_msgs
+   DEPENDENCIES sensor_msgs actionlib_msgs
 )
 
 ###################################
@@ -50,7 +54,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES shared_autonomy_msgs
-#  CATKIN_DEPENDS sensor_msgs
+  CATKIN_DEPENDS sensor_msgs actionlib_msgs
 #  DEPENDS system_lib
 )
 
