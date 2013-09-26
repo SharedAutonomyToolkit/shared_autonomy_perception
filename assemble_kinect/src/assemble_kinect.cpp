@@ -36,10 +36,6 @@ private:
 		 shared_autonomy_msgs::KinectAssembly::Response &res);
   
   // -------------- Data --------------
-  Image image_;
-  Image depth_;
-  CameraInfo info_;
-  PointCloud2 points_;
   shared_autonomy_msgs::KinectAssembly::Response resp_;
   // TODO: Do I need any mutexes here s.t. I can't accidentally respond 
   // to a service request halfway through updating the data?
@@ -47,7 +43,6 @@ private:
 public:
   KinectAssembler();
   ~KinectAssembler();
-
 
 };
 
@@ -89,7 +84,6 @@ bool KinectAssembler::serviceCB(shared_autonomy_msgs::KinectAssembly::Request &r
   return true;
 }
 	       
-
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "assemble_kinect_node");

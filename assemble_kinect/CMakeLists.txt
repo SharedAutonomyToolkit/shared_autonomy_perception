@@ -4,7 +4,8 @@ project(assemble_kinect)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS message_filters roscpp sensor_msgs shared_autonomy_msgs)
+find_package(catkin REQUIRED COMPONENTS message_filters)
+#find_package(catkin REQUIRED COMPONENTS message_filters roscpp sensor_msgs shared_autonomy_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -51,7 +52,8 @@ find_package(catkin REQUIRED COMPONENTS message_filters roscpp sensor_msgs share
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES assemble_kinect
-#  CATKIN_DEPENDS message_filters roscpp sensor_msgs
+# CATKIN_DEPENDS message_filters roscpp sensor_msgs
+ CATKIN_DEPENDS message_filters roscpp sensor_msgs shared_autonomy_msgs
 #  DEPENDS system_lib
 )
 
