@@ -80,7 +80,6 @@ void BenSegmentation::executeCB(const shared_autonomy_msgs::SegmentGoalConstPtr 
 
   // finally, return the segmentation!
   result_.mask = sensor_msgs::Image();
-  result_.object_points = sensor_msgs::PointCloud2();
   ROS_INFO("%s succeeded.", action_name_.c_str());
   as_.setSucceeded(result_); 
 
