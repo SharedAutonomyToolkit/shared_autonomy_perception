@@ -20,7 +20,8 @@ public:
 
 BenSegmentation::BenSegmentation(std::string name)  : 
   as_(nh_, name, boost::bind(&BenSegmentation::executeCB, this, _1), false), 
-  action_name_(name) {
+  action_name_(name) 
+{
   as_.start();
 }
 
@@ -37,7 +38,6 @@ void BenSegmentation::executeCB(const shared_autonomy_msgs::SegmentGoalConstPtr 
   feedback_.count = std_msgs::Int32();
   feedback_.count.data = 0;
   // TODO: this is where I'd make the first call to the HMI actionserver
-
 
   for(int ii = 1; ii < 10; ii++) {
     // check for/handle preemption
