@@ -1,5 +1,5 @@
 #goal
-sensor_msgs/Image orig_img
+sensor_msgs/Image image
 ---
 #result
 std_msgs/Int16 min_row
