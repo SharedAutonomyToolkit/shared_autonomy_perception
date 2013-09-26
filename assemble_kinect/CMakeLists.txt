@@ -78,7 +78,7 @@ add_executable(assemble_kinect src/assemble_kinect.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(assemble_kinect_node assemble_kinect_generate_messages_cpp)
+add_dependencies(assemble_kinect shared_autonomy_msgs_gencpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(assemble_kinect

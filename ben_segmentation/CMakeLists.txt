@@ -4,7 +4,7 @@ project(ben_segmentation)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS actionlib)
+find_package(catkin REQUIRED COMPONENTS actionlib)# shared_autonomy_msgs)
 #find_package(catkin REQUIRED COMPONENTS actionlib roscpp shared_autonomy_msgs)
 
 ## System dependencies are found with CMake's conventions
@@ -52,7 +52,7 @@ find_package(catkin REQUIRED COMPONENTS actionlib)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ben_segmentation
- CATKIN_DEPENDS actionlib roscpp shared_autonomy_msgs
+# CATKIN_DEPENDS actionlib roscpp shared_autonomy_msgs
 #  DEPENDS system_lib
 )
 
@@ -77,7 +77,7 @@ add_executable(ben_segmentation_node src/ben_segmentation_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(ben_segmentation_node ben_segmentation_generate_messages_cpp)
+add_dependencies(ben_segmentation_node shared_autonomy_msgs_gencpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(ben_segmentation_node
