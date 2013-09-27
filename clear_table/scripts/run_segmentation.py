@@ -1,9 +1,12 @@
 #! /usr/bin/env python
 
+import math
+
 import rospy
 
 import actionlib
-#import handle_point_cloud2 as pts
+from cv_bridge import CvBridge
+import handle_point_cloud2 as pts
 
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
@@ -20,6 +23,7 @@ class RunSegmentation():
 
     def __init__(self):
         self.kinect_client = rospy.ServiceProxy('assemble_kinect', KinectAssembly)
+        self.point_publisher = rospy.Publisher('segmented_points', PointCloud2)
         self.segment_client = actionlib.SimpleActionClient('/ben_segmentation_node', SegmentAction)
         self.segment_client.wait_for_server()
         self.mask = None
@@ -43,6 +47,27 @@ class RunSegmentation():
 
     def publish_points(self, data, mask):
         print "I should be publishing points!"
+        mybridge = CvBridge()
+        img = mybridge.imgmsg_to_cv(mask)
+        # list of non-zero indices
+        idxs = [[ii, jj] for jj in range(img.cols) for ii in range(img.rows) if img[ii, jj] > 0]
+        pt_gen = pts.read_points(data.points)#, uvs=idxs, skip_nans=True) # this didn't work!!
+
+        out_pts = []
+        for jj in range(data.points.height):
+            for ii in range(data.points.width):
+                pt = pt_gen.next()
+                if not math.isnan(pt[0]):
+                    if img[jj,ii] > 0:
+                        out_pts.append(pt[0:3])
+        print "done creating output point cloud"
+
+        #pt_arr = array(pt_gen)#[pt for pt in pt_gen]
+        #print pt_arr
+        out_cloud = pts.create_cloud_xyz32(data.points.header, out_pts)
+
+        # then, 
+        self.point_publisher.publish(out_cloud)
 
     def segmentDoneCB(self, state, result):
         print "segmentation done"
