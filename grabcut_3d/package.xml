@@ -2,7 +2,7 @@
   <name>grabcut_3d</name>
   <version>0.0.1</version>
   <description>Library wrapping around the GrabCut algorithm.</description>
-  <author>Benjamin Pitzer, Laura Lindzey</author>
+  <author>Benjamin Pitzer</author>
   <maintainer email="lindzey@gmail.com">Laura Lindzey</maintainer>
   <license>BSD</license>
 
