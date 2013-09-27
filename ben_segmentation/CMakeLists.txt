@@ -4,7 +4,8 @@ project(ben_segmentation)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS actionlib)# shared_autonomy_msgs)
+find_package(catkin REQUIRED COMPONENTS actionlib cv_bridge)# shared_autonomy_msgs)
+find_package(OpenCV REQUIRED)
 #find_package(catkin REQUIRED COMPONENTS actionlib roscpp shared_autonomy_msgs)
 
 ## System dependencies are found with CMake's conventions
@@ -54,7 +55,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ben_segmentation
 #  CATKIN_DEPENDS actionlib roscpp shared_autonomy_msgs
-#  DEPENDS system_lib
+#  DEPENDS OpenCV
 )
 
 ###########
@@ -66,6 +67,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
@@ -84,6 +86,7 @@ add_dependencies(ben_segmentation_node shared_autonomy_msgs_gencpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(ben_segmentation_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
 )
 
 #############
