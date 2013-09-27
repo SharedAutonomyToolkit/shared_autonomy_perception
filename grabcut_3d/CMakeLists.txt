@@ -1,23 +1,36 @@
-cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+cmake_minimum_required(VERSION 2.8)
+project(grabcut_3d)
 
-# Set the build type.  Options are:
-#  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
-#  Debug          : w/ debug symbols, w/o optimization
-#  Release        : w/o debug symbols, w/ optimization
-#  RelWithDebInfo : w/ debug symbols, w/ optimization
-#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Release)
+find_package(catkin REQUIRED roscpp pcl_ros)
+find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED)
 
-rosbuild_init()
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+catkin_package(CATKIN_DEPENDS roscpp pcl_ros
+               DEPENDS OpenCV PCL
+               INCLUDE_DIRS include
+               LIBRARIES ${PROJECT_NAME}
+)
 
-#set(CMAKE_CXX_FLAGS "-p")
+#catkin_python_setup()
 
-#set(CMAKE_VERBOSE_MAKEFILE true)
-include($ENV{ROS_ROOT}/core/rosbuild/FindPkgConfig.cmake)
-rosbuild_add_boost_directories()
+include_directories(SYSTEM ${catkin_INCLUDE_DIRS}
+                           ${OpenCV_INCLUDE_DIRS}
+			   ${PCL_INCLUDE_DIRS}
+)
+include_directories(include)
 
-rosbuild_add_executable(grabcut_3d src/grabcut_3d.cpp src/grabcut_3d_app.cpp)
-rosbuild_add_library(grabcut3d src/grabcut_3d.cpp)
+add_executable(grabcut_3d_exe src/grabcut_3d.cpp src/grabcut_3d_app.cpp)
+target_link_libraries(grabcut_3d_exe ${OpenCV_LIBRARIES} ${PCL_LIBRARIES})
+
+add_library(${PROJECT_NAME} src/grabcut_3d.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES} ${PCL_LIBRARIES})
+
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}/
+)
+
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
