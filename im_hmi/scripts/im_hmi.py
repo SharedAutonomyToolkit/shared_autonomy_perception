@@ -225,8 +225,8 @@ class BoundingBox():
             # Convert from meters back to pixels 
             row1 = self.image.rows - int(round(self.y1*self.ppm))
             row2 = self.image.rows - int(round(self.y2*self.ppm))
-            col1 = self.image.cols - int(round(self.x1*self.ppm))
-            col2 = self.image.cols - int(round(self.x2*self.ppm))
+            col1 = int(round(self.x1*self.ppm))
+            col2 = int(round(self.x2*self.ppm))
 
             min_row = max(0, min(row1, row2))
             max_row = min(self.image.rows-1, max(row1, row2))
