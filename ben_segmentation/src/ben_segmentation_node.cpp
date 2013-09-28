@@ -22,7 +22,6 @@ protected:
   std::string action_name_;
   shared_autonomy_msgs::SegmentFeedback feedback_;
   shared_autonomy_msgs::SegmentResult segmentation_result_;
-  bool bb_done_; 
 
   BBoxFinalState getBoundingBox(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal,
 				int &min_col, int &max_col, int &min_row, int &max_row);
@@ -30,8 +29,6 @@ public:
   BenSegmentation(std::string segment_name, std::string bb_name);
   ~BenSegmentation(void);
   void segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &goal);
-  void bbDoneCB(const actionlib::SimpleClientGoalState& state, const shared_autonomy_msgs::BoundingBoxResultConstPtr& result);
-  //  void bbDoneCB(const actionlib::SimpleClientGoalState& state, const shared_autonomy_msgs::BoundingBoxResult& result);
 
 };
 
@@ -51,8 +48,6 @@ BenSegmentation::~BenSegmentation(void) {
 BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal, 
 					       int &min_col, int &max_col, int &min_row, int &max_row) {
 
-  //At this point, goal is NOT done; will be reset by done_cb
-  bb_done_ = false;
   // whether a preempt has been requested
   bool segment_preempted = false;
   BBoxFinalState bb_state = FAILED;
@@ -61,7 +56,7 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
   // TODO: pass this in as parameter
   shared_autonomy_msgs::BoundingBoxResult bb_result;
   bb_goal.image = segment_goal->image;
-  bb_client_.sendGoal(bb_goal, boost::bind(&BenSegmentation::bbDoneCB, this, _1, _2));
+  bb_client_.sendGoal(bb_goal);
 
   ROS_INFO("ben_segmentation sent goal");
 
@@ -72,7 +67,7 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
   ros::Rate rr(10);
   // it looks like there IS an .isDone():
   // http://docs.ros.org/hydro/api/actionlib/html/classactionlib_1_1SimpleClientGoalState.html
-  while (!bb_done_ and ros::ok() and !segment_preempted) {
+  while (!bb_client_.getState().isDone() and ros::ok() and !segment_preempted) {
     // TODO: do I want to publish any feedback here?
     //feedback_.count.data = feedback_.count.data + 1;
     //segment_server_.publishFeedback(feedback_);
@@ -83,7 +78,7 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
 
   ROS_INFO("ben_segmentation broke out of loop waiting for bbox result");
 
-  if(bb_done_) {
+  if(bb_client_.getState().isDone()) {
     if(bb_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
       // TODO: in future, this would be the only state that continues to the next
       // segmentation step; the rest would return a preempted/aborted state
@@ -114,13 +109,6 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
     bb_state = FAILED;
   }
   return bb_state;
-}
-
-// TODO: I really dislike using flag like this - is there some direct way 
-// to check if my service client has returned? Like a "hasResult()" function?
-void BenSegmentation::bbDoneCB(const actionlib::SimpleClientGoalState& state, const shared_autonomy_msgs::BoundingBoxResultConstPtr& result) {
-  ROS_INFO("bbDoneCB called!");
-  bb_done_ = true;
 }
 
   // TODO: This needs some sub-functions...
