@@ -37,6 +37,7 @@ private:
   
   // -------------- Data --------------
   shared_autonomy_msgs::KinectAssembly::Response resp_;
+  bool has_data_;
   // TODO: Do I need any mutexes here s.t. I can't accidentally respond 
   // to a service request halfway through updating the data?
 
@@ -60,6 +61,7 @@ KinectAssembler::KinectAssembler() :
 
   // TODO: rgbd_assembler had something like "resolveName" here ...
   kinect_srv_ = root_nh_.advertiseService("assemble_kinect", &KinectAssembler::serviceCB, this);
+  has_data_ = false;
   ROS_INFO("KinectAssembler started");
 
 }
@@ -74,14 +76,22 @@ void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& 
   resp_.depth = *depth;
   resp_.info = *info;
   resp_.points = *points;
+  has_data_ = true;
 }
 
-// TODO: need to at least check that we've correctly initialized the data ...
+
 bool KinectAssembler::serviceCB(shared_autonomy_msgs::KinectAssembly::Request &req,
 	       shared_autonomy_msgs::KinectAssembly::Response &res) {
   res = resp_;
   ROS_INFO("service callback called!");
-  return true;
+
+  // check that data was initialized
+  if(has_data_){
+    return true;
+  }
+  else {
+    return false;
+  }
 }
 	       
 

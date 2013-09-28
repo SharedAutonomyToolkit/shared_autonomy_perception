@@ -25,15 +25,20 @@ class RunSegmentation():
         self.kinect_client = rospy.ServiceProxy('assemble_kinect', KinectAssembly)
         self.point_publisher = rospy.Publisher('segmented_points', PointCloud2)
         self.segment_client = actionlib.SimpleActionClient('/ben_segmentation_node', SegmentAction)
-        self.segment_client.wait_for_server()
+
         self.mask = None
 
     def get_data(self):
-        resp = self.kinect_client()
+        try:
+            resp = self.kinect_client()
+        except rospy.ServiceException:
+            print "run_segmentation unable to get kinect data!"
+            resp = None
+            
         return resp
 
     def get_segmentation(self, data):
-    
+        self.segment_client.wait_for_server()    
         goal = SegmentGoal()
         goal.image = data.image
         goal.depth = data.depth
@@ -84,6 +89,9 @@ if __name__ == "__main__":
 
     mysegmenter = RunSegmentation()
     data = mysegmenter.get_data()
+    if data is None:
+        return
+
     print "got image data"
     mask = mysegmenter.get_segmentation(data)
     print "got mask"
