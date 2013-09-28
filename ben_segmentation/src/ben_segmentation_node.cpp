@@ -60,18 +60,9 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
 
   ROS_INFO("ben_segmentation sent goal");
 
-  //feedback_.count = std_msgs::Int32();
-  //feedback_.count.data = 0;
-
   // wait for bounding box result OR preemption
   ros::Rate rr(10);
-  // it looks like there IS an .isDone():
-  // http://docs.ros.org/hydro/api/actionlib/html/classactionlib_1_1SimpleClientGoalState.html
   while (!bb_client_.getState().isDone() and ros::ok() and !segment_preempted) {
-    // TODO: do I want to publish any feedback here?
-    //feedback_.count.data = feedback_.count.data + 1;
-    //segment_server_.publishFeedback(feedback_);
-
     segment_preempted = segment_server_.isPreemptRequested();
     rr.sleep();
   } 
@@ -126,8 +117,7 @@ void BenSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalCo
   }
   ROS_INFO("ben_segmentation got HMI server!");
 
-  // Get the bounding box
-  // I dislike how this function also uses segment_server_, but I think 
+  // TODO: I dislike how this function also uses segment_server_, but I think 
   // that it has to in order to handle the preemption stuff
   int min_col, max_col, min_row, max_row;
   BBoxFinalState bb_state = getBoundingBox(segment_goal, min_col, max_col, min_row, max_row);

@@ -38,8 +38,6 @@ private:
   // -------------- Data --------------
   shared_autonomy_msgs::KinectAssembly::Response resp_;
   bool has_data_;
-  // TODO: Do I need any mutexes here s.t. I can't accidentally respond 
-  // to a service request halfway through updating the data?
 
 public:
   KinectAssembler();
@@ -78,7 +76,6 @@ void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& 
   resp_.points = *points;
   has_data_ = true;
 }
-
 
 bool KinectAssembler::serviceCB(shared_autonomy_msgs::KinectAssembly::Request &req,
 	       shared_autonomy_msgs::KinectAssembly::Response &res) {
