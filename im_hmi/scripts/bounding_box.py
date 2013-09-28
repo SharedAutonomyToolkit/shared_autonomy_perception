@@ -6,8 +6,6 @@ from interactive_markers.menu_handler import *
 from std_msgs.msg import ColorRGBA
 import tf
 
-import rospy
-
 class BoundingBox():
     def __init__(self, hmi_callback, im_server, image):
         self.hmi_callback = hmi_callback

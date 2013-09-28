@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-
-
 import actionlib
 from cv_bridge import CvBridge
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
