@@ -84,5 +84,7 @@ if __name__ == "__main__":
 
     mysegmenter = RunSegmentation()
     data = mysegmenter.get_data()
+    print "got image data"
     mask = mysegmenter.get_segmentation(data)
+    print "got mask"
     mysegmenter.publish_points(data, mask)

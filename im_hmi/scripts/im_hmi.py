@@ -250,8 +250,10 @@ class IM_HMI():
 
         # TODO: make topic a parameter
         self.bb_server = actionlib.SimpleActionServer('/get_bounding_box', 
-                                               BoundingBoxAction, 
-                                               execute_cb=self.execute_bounding_box)
+                                                      BoundingBoxAction, 
+                                                      execute_cb=self.execute_bounding_box,
+                                                      auto_start=False)
+        self.bb_server.start()
         
         self.im_server = InteractiveMarkerServer("im_gui")
         self.cv_bridge = CvBridge()

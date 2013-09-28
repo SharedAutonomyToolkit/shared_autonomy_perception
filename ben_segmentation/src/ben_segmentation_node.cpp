@@ -70,6 +70,8 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
 
   // wait for bounding box result OR preemption
   ros::Rate rr(10);
+  // it looks like there IS an .isDone():
+  // http://docs.ros.org/hydro/api/actionlib/html/classactionlib_1_1SimpleClientGoalState.html
   while (!bb_done_ and ros::ok() and !segment_preempted) {
     // TODO: do I want to publish any feedback here?
     //feedback_.count.data = feedback_.count.data + 1;
