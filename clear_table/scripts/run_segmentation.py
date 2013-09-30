@@ -54,8 +54,9 @@ class RunSegmentation():
         print "I should be publishing points!"
         mybridge = CvBridge()
         img = mybridge.imgmsg_to_cv(mask)
-        # list of non-zero indices
-        idxs = [[ii, jj] for jj in range(img.cols) for ii in range(img.rows) if img[ii, jj] > 0]
+        # TODO: I dislike having this dependency here on the cv encodings ... the binary transform should happen in ben_segmentation
+        # list of foreground indices 
+        # idxs = [[ii, jj] for jj in range(img.cols) for ii in range(img.rows) if (img[ii,jj] == 1 or img[ii,jj]==3)]
         pt_gen = pts.read_points(data.points)#, uvs=idxs, skip_nans=True) # this didn't work!!
 
         out_pts = []
@@ -63,7 +64,7 @@ class RunSegmentation():
             for ii in range(data.points.width):
                 pt = pt_gen.next()
                 if not math.isnan(pt[0]):
-                    if img[jj,ii] > 0:
+                    if (img[jj,ii] == 1 or img[jj,ii]==3):
                         out_pts.append(pt[0:3])
         print "done creating output point cloud"
 
@@ -90,7 +91,8 @@ if __name__ == "__main__":
     mysegmenter = RunSegmentation()
     data = mysegmenter.get_data()
     if data is None:
-        return
+        print "run_segmentation - no data available!"
+        exit
 
     print "got image data"
     mask = mysegmenter.get_segmentation(data)

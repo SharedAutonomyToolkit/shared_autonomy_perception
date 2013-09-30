@@ -5,10 +5,11 @@ from cv_bridge import CvBridge
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 import rospy
 
-from shared_autonomy_msgs.msg import BoundingBoxAction, BoundingBoxResult
+from shared_autonomy_msgs.msg import BoundingBoxAction, BoundingBoxResult, EditPixelAction, EditPixelResult
 
 # the classes that actually handle the different actionlib request types
 from bounding_box import BoundingBox
+from edit_pixel_labels import EditPixelLabels
 
 # The role of this file is to match the appropriate IM-handling class to the
 # actionlib request received. 
@@ -25,8 +26,52 @@ class IM_HMI():
         self.bb_server.start()
         self.bb_active = False
 
+
+        self.label_server = actionlib.SimpleActionServer('/edit_pixel_labels',
+                                                         EditPixelAction,
+                                                         execute_cb = self.execute_label_pixel,
+                                                         auto_start=False)
+        self.label_server.start()
+        self.label_active = False
+
         self.im_server = InteractiveMarkerServer("im_gui")
         self.cv_bridge = CvBridge()
+
+    def label_done_callback(self):
+        self.label_active = False
+
+    def execute_label_pixel(self, goal):
+        print "execute_label_pixel called"
+
+        cv_im = self.cv_bridge.imgmsg_to_cv(goal.image)
+        cv_mask = self.cv_bridge.imgmsg_to_cv(goal.mask)
+
+        self.label_active = True
+        mylabeller = EditPixelLabels(self.label_done_callback, self.im_server, cv_im, cv_mask)
+
+        rr = rospy.Rate(10)
+        while (self.label_active and (not self.label_server.is_preempt_requested()) and
+               (not rospy.is_shutdown())):
+            rr.sleep()
+
+        print "im_hmi/execute_label_pixel - done looping"
+        print "label_active: ", self.label_active
+        print "ros shutdown: ", rospy.is_shutdown()
+        print "preempt req: ", self.label_server.is_preempt_requested()
+
+        if self.label_server.is_preempt_requested():
+            mylabeller.cancel()
+            self.label_server.set_preempted()
+        else:
+            # TODO: actually check the result of the points and reply correspondingly
+            result = True #mylabeller.get_result()
+            if result is None:
+                self.label_server.set_aborted()
+            else:
+                resp = EditPixelResult()
+                self.label_server.set_succeeded(resp)
+        
+
 
     def bb_done_callback(self):
         self.bb_active = False
