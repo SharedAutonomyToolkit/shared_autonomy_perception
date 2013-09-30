@@ -1,12 +1,46 @@
-shared_autonomy
+shared_autonomy_perception
 ===============
 
-For now, lots of random pieces that I've been experimenting with. They'll eventually come together into the pipeline ...
+For now, lots of random pieces that I've been experimenting with. 
+They'll eventually come together into the pipeline ... at this point, 
+the segmentation is a simple pass-through, labeling all points within 
+the bounding box as foreground. 
 
-* assemble_kinect 
-  Listens to data coming from the kinect and packaging it up for segmentation tasks. 
-  I feel like somebody has got to have done this before - rgbd_assembler is pretty close, but I don't want to depend on the whole manipulation pipeline! 
-  Written in C++ b/c python doesn't appear to support approximate synchronization, although this looks promising:
+To test the current setup (launch file coming soon):
+
+1) roscore
+
+2) rosrun openni_launch openni.launch
+
+3) rosrun rqt_reconfigure rqt_reconfigure; camera -> driver -> check "depth_registration"
+
+4) rosrun assemble_kinect assemble_kinect
+
+5) rosrun ben_segmentation ben_segmentation_node
+
+6) rosrun im_hmi im_hmi.py
+
+7) rosrun rviz rviz; set it up with:
+  * Fixed Frame /camera_link
+  * PointCloud2 /camera/depth_registered/points 
+  * PointCloud2 /segmented_points
+  * InteractiveMarkers /im_gui/update
+
+8) rosrun clear_table run_segmentation.py
+
+9) in rviz:
+  * drag corners of the interactive marker to enclose the object you want to segment
+  * right click on IM -> accept ROI 
+  * check that the points published on /segmented_points were all of the 3d points inside the bounding box
+  
+================
+
+Module organization:
+
+* assemble_kinect - 
+  * Listens to data coming from the kinect and packaging it up for segmentation tasks. 
+  * I feel like somebody has got to have done this before - rgbd_assembler is pretty close, but I don't want to depend on the whole manipulation pipeline! 
+  * Written in C++ b/c python doesn't appear to support approximate synchronization, although this looks promising:
 https://github.com/ros-perception/image_pipeline/blob/groovy-devel/camera_calibration/src/camera_calibration/approxsync.py 
 
 
