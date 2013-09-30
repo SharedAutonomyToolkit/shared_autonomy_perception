@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/server/simple_action_server.h>
+#include <grabcut_3d/grabcut_3d.h>
 #include <sensor_msgs/image_encodings.h>
 #include <shared_autonomy_msgs/BoundingBoxAction.h>
 #include <shared_autonomy_msgs/SegmentAction.h>
@@ -12,6 +13,11 @@ enum BBoxFinalState {
   PREEMPTED,
   FAILED
 };
+
+/**
+
+
+ **/
 
 class BenSegmentation {
 
@@ -25,6 +31,8 @@ protected:
 
   BBoxFinalState getBoundingBox(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal,
 				int &min_col, int &max_col, int &min_row, int &max_row);
+  void maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
+
 public:
   BenSegmentation(std::string segment_name, std::string bb_name);
   ~BenSegmentation(void);
@@ -102,6 +110,14 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
   return bb_state;
 }
 
+// fill mask in w/ bounds from bbox call
+void BenSegmentation::maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
+  cv::Point p1 = cv::Point(min_col, min_row);
+  cv::Point p2 = cv::Point(max_col, max_row);
+  cv::rectangle(mask, p1, p2, 1, CV_FILLED);
+}
+
+
   // TODO: This needs some sub-functions...
   // * obtain bounding_box
   // * bbox bounds to mask
@@ -121,9 +137,6 @@ void BenSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalCo
   // that it has to in order to handle the preemption stuff
   int min_col, max_col, min_row, max_row;
   BBoxFinalState bb_state = getBoundingBox(segment_goal, min_col, max_col, min_row, max_row);
-  
-  ROS_INFO("getBoundingBox returned");
-
   if(bb_state == FAILED) {
     segment_server_.setAborted();
     return;
@@ -139,14 +152,9 @@ void BenSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalCo
 
   // Convert bounding box to mask
   cv::Mat mask = cv::Mat::zeros(segment_goal->image.height, segment_goal->image.width, CV_8UC1);
-  
   ROS_INFO("created cv::Mat mask");
-
-  // fill mask in w/ bounds from bbox call
-  cv::Point p1 = cv::Point(min_col, min_row);
-  cv::Point p2 = cv::Point(max_col, max_row);
-  cv::rectangle(mask, p1, p2, 1, CV_FILLED);
-
+  maskFromBB(mask, min_col, max_col, min_row, max_row);
+  
   ROS_INFO("rectangle added to cv::Mat");
 
   cv_bridge::CvImage out_msg;
