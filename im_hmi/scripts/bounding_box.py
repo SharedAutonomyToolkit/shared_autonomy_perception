@@ -72,6 +72,8 @@ class BoundingBox():
         self.im_server.applyChanges()
 
     def add_bounding_box(self):
+        print "add_bounding_box called!"
+
         menu_handler = MenuHandler()
         only_entry = menu_handler.insert("Accept ROI", callback=self.acceptCB)
 
@@ -100,11 +102,24 @@ class BoundingBox():
         self.roi_im.pose.position.x = (self.x1 + self.x2) / 2
         self.roi_im.pose.position.y = (self.y1 + self.y2) / 2
         self.roi_im.controls.append(roi_control_button)
-        self.im_server.insert(self.roi_im)
-        menu_handler.apply(self.im_server, "ROI")
+        #self.im_server.insert(self.roi_im)
+
         
         # creating marker & control for corners
         # TODO: I think that we could have all these controls attached to the same IM
+        # However, I'm not sure how to get them to start offset from the IM's frame ... 
+        #tl_marker = Marker()
+        #tl_marker.type = Marker.CUBE
+        #tl_marker.scale.x = 1.01
+        #tl_marker.scale.y = 1.01
+        #tl_marker.scale.z = 1.01
+        #tl_marker.color.r = 0.5
+        #tl_marker.color.g = 0.5
+        #tl_marker.color.b = 0.5
+        #tl_marker.color.a = 0.5
+        #tl_marker.pose.position.x = self.x1 
+        #tl_marker.pose.position.y = self.y1
+
 
         tl_control = InteractiveMarkerControl()
         tl_control.name = "tl_corner"
@@ -114,6 +129,9 @@ class BoundingBox():
         tl_control.orientation.z = qq[2]
         tl_control.orientation.w = qq[3]
         tl_control.interaction_mode = InteractiveMarkerControl.MOVE_PLANE
+        tl_control.always_visible = True
+        #tl_control.markers.append(tl_marker)
+        #self.roi_im.controls.append(tl_control)
 
         tl_im = InteractiveMarker()
         tl_im.header.frame_id = "/camera_link"
@@ -124,7 +142,8 @@ class BoundingBox():
         tl_im.controls.append(tl_control)
 
         self.im_server.insert(tl_im, self.processTL)
-        
+        self.im_server.insert(self.roi_im, self.process_feedback)
+
         # And, for bottom-right corner
         br_control = InteractiveMarkerControl()
         br_control.name = "br_corner"
@@ -145,12 +164,6 @@ class BoundingBox():
         self.im_server.insert(br_im, self.processBR)
 
         # separate menu handler for now - will merge with ROI eventually
-        menu = InteractiveMarker()
-        menu.header.frame_id = "/camera_link"
-        menu.pose.position.y = -3.0
-        menu.scale = 1
-        menu.name = "acceptROI"
-
         menu_marker = Marker()
         menu_marker.type = Marker.CUBE
         menu_marker.scale.x = 0.5
@@ -165,7 +178,16 @@ class BoundingBox():
         menu_control.interaction_mode = InteractiveMarkerControl.BUTTON
         menu_control.always_visible = True
         menu_control.markers.append(menu_marker)
-        menu.controls.append(menu_control)
+
+        menu_im = InteractiveMarker()
+        menu_im.header.frame_id = "/camera_link"
+        menu_im.pose.position.y = -3.0
+        menu_im.scale = 1
+        menu_im.name = "acceptROI"
+
+        menu_im.controls.append(menu_control)
+
+        menu_handler.apply(self.im_server, "ROI")
 
         self.im_server.applyChanges()
 
@@ -191,6 +213,16 @@ class BoundingBox():
         scale.y = self.y2 - self.y1
         self.im_server.insert(self.roi_im)
         self.im_server.applyChanges()
+
+    # TODO: I'm not sure how to make this work w/ 
+    def process_feedback(self, feedback):
+        if feedback.control_name == "tl_corner":
+            print "got tl feedback"
+            #self.processTL(feedback)
+        elif feedback.control_name == "br_corner":
+            print "got br feedback"
+            #self.processBR(feedback)
+        
 
     # TODO: figure out how to get this to update the position of the ROI marker ... 
     # TODO: should only need one callback, and can switch on the originating marker topic?
