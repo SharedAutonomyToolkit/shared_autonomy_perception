@@ -34,6 +34,10 @@ class EditPixelLabels():
     def add_image(self):
         print "add image called!"
 
+        self.menu_handler = MenuHandler()
+        menu_foreground = self.menu_handler.insert("Foreground", callback=self.foregroundCB)
+        menu_background = self.menu_handler.insert("Background", callback=self.backgroundCB)
+
         image_marker = Marker()
         image_marker.type = image_marker.POINTS
         image_marker.scale.x = 0.05
@@ -64,15 +68,27 @@ class EditPixelLabels():
 
         image_control = InteractiveMarkerControl()
         image_control.always_visible = True
+        image_control.interaction_mode = InteractiveMarkerControl.MENU
         image_control.markers.append(image_marker)
 
-        image_im = InteractiveMarker()
-        image_im.header.frame_id = "camera_link"
-        image_im.name = "LabeledImage"
-        image_im.description = ""
-        image_im.controls.append(image_control)
-        self.im_server.insert(image_im)
+        self.image_im = InteractiveMarker()
+        self.image_im.header.frame_id = "camera_link"
+        self.image_im.name = "LabeledImage"
+        self.image_im.description = ""
+        self.image_im.controls.append(image_control)
+
+        self.im_server.insert(self.image_im)
+        self.menu_handler.apply(self.im_server, "LabeledImage")
         self.im_server.applyChanges()
+
+    def foregroundCB(self, feedback):
+        print "foregroundCB called!"
+        if feedback.mouse_point_valid:
+            print "mouse at %0.2f, %0.2f" % (feedback.mouse_point.x, feedback.mouse_point.y)
+    def backgroundCB(self, feedback):
+        print "backgroundCB called!"
+        if feedback.mouse_point_valid:
+            print "mouse at %0.2f, %0.2f" % (feedback.mouse_point.x, feedback.mouse_point.y)
 
     def add_button(self):
         print "add button called!"
