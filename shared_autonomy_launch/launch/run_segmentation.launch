@@ -7,7 +7,7 @@
 
   <!-- the kinect's depth and rgb images are not published synchronously.
   This gathers them and provides a service to obtain the most recent set -->
-<!--  <node name="assemble_kinect" pkg="assemble_kinect" type="assemble_kinect"/>-->
+  <node name="assemble_kinect" pkg="assemble_kinect" type="assemble_kinect"/>
 
   <!-- This handles the interactive segmentation of objects -->
 <!--  <node name="grabcut3d_segmentation" pkg="grabcut3d_segmentation" type="grabcut3d_segmentation_node"/> -->
