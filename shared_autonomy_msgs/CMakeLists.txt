@@ -25,11 +25,10 @@ add_action_files(
 )
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  Pixel.msg
+)
 
 ## Generate services in the 'srv' folder
 add_service_files(

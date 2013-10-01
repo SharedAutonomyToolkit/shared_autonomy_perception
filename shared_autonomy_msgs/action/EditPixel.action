@@ -3,7 +3,7 @@ sensor_msgs/Image image
 sensor_msgs/Image mask
 ---
 #result
-geometry_msgs/Point[] fg
-geometry_msgs/Point[] bg
+shared_autonomy_msgs/Pixel[] fg
+shared_autonomy_msgs/Pixel[] bg
 ---
 #feedback
