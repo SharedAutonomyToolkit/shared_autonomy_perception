@@ -54,6 +54,7 @@ class BoundingBox():
                 pt = Point(xx, yy, -0.05)
 
                 image_marker.points.append(pt)
+                # TODO: does this conversion belong in im_utils?
                 # ROS is rgba, opencv is bgr
                 cc = ColorRGBA(1.0-self.image[ii,jj][2], 1.0-self.image[ii,jj][1], 1.0-self.image[ii,jj][0], 1.0)
                 image_marker.colors.append(cc)
@@ -148,7 +149,6 @@ class BoundingBox():
         br.controls.append(br_control)
         self.im_server.insert(br, self.processBR)
 
-
         # separate menu handler for now - will merge with ROI eventually
         menu = InteractiveMarker()
         menu.header.frame_id = "/camera_link"
@@ -175,10 +175,6 @@ class BoundingBox():
         self.im_server.applyChanges()
 
     def acceptCB(self, feedback):
-        # This would be sloppy, but since there's only one menu item,
-        # can assume that it means return
-        print "acceptCB called!!"
-        # Convert from meters back to pixels 
         (row1, col1) = im_utils.pixelsFromMeters(self.x1, self.y1, self.ppm, self.image.rows, self.image.cols)
         (row2, col2) = im_utils.pixelsFromMeters(self.x2, self.y2, self.ppm, self.image.rows, self.image.cols)
         
@@ -187,12 +183,9 @@ class BoundingBox():
         min_col = max(0, min(col1, col2))
         max_col = min(self.image.cols-1, max(col1, col2))
         
-        print "(%d, %d, %d, %d)" % (min_row, max_row, min_col, max_col)
         self.result = (min_row, max_row, min_col, max_col)
-
         self.im_server.clear()
         self.im_server.applyChanges()
-
         self.hmi_callback()
 
     def updateROI(self):
@@ -204,26 +197,18 @@ class BoundingBox():
         self.im_server.insert(self.roi_im)
         self.im_server.applyChanges()
 
-
     # TODO: figure out how to get this to update the position of the ROI marker ... 
     # TODO: should only need one callback, and can switch on the originating marker topic?
     def processTL(self, feedback):
-        if feedback.event_type != InteractiveMarkerFeedback.POSE_UPDATE:
-            #raise Exception("WTF? this marker should only be able to generate pose updates")
-            return
-        pp = feedback.pose.position
-        self.x1 = pp.x
-        self.y1 = pp.y
-        self.updateROI()
+        if feedback.event_type == InteractiveMarkerFeedback.POSE_UPDATE:
+            pp = feedback.pose.position
+            self.x1 = pp.x
+            self.y1 = pp.y
+            self.updateROI()
 
     def processBR(self, feedback):
-        if feedback.event_type != InteractiveMarkerFeedback.POSE_UPDATE:
-            #raise Exception("WTF? this marker should only be able to generate pose updates")
-            return
-
-        pp = feedback.pose.position
-        self.x2 = pp.x
-        self.y2 = pp.y
-        self.updateROI()
-
-
+        if feedback.event_type == InteractiveMarkerFeedback.POSE_UPDATE:
+            pp = feedback.pose.position
+            self.x2 = pp.x
+            self.y2 = pp.y
+            self.updateROI()

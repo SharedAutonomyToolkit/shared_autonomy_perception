@@ -1,8 +1,10 @@
 from math import pi
 
+import im_utils
 from geometry_msgs.msg import Point
 from interactive_markers.interactive_marker_server import *
 from interactive_markers.menu_handler import *        
+from shared_autonomy_msgs.msg import Pixel
 from std_msgs.msg import ColorRGBA
 import tf
 
@@ -18,8 +20,8 @@ class EditPixelLabels():
         self.ppm = 100
 
         # lists of pixels that'll be returned
-        self.fg = None
-        self.bg = None
+        self.fg = []
+        self.bg = []
 
         # draws the image using interactive markers
         self.add_image()
@@ -35,8 +37,8 @@ class EditPixelLabels():
         print "add image called!"
 
         menu_handler = MenuHandler()
-        menu_foreground = menu_handler.insert("Foreground", callback=self.foregroundCB)
-        menu_background = menu_handler.insert("Background", callback=self.backgroundCB)
+        menu_foreground = menu_handler.insert("Foreground", callback=self.foreground_cb)
+        menu_background = menu_handler.insert("Background", callback=self.background_cb)
 
         image_marker = Marker()
         image_marker.type = image_marker.POINTS
@@ -81,18 +83,19 @@ class EditPixelLabels():
         menu_handler.apply(self.im_server, "LabeledImage")
         self.im_server.applyChanges()
 
-    def foregroundCB(self, feedback):
-        print "foregroundCB called!"
+    def foreground_cb(self, feedback):
         if feedback.mouse_point_valid:
-            print "mouse at %0.2f, %0.2f" % (feedback.mouse_point.x, feedback.mouse_point.y)
-    def backgroundCB(self, feedback):
-        print "backgroundCB called!"
+            (row, col) = im_utils.pixelsFromMeters(feedback.mouse_point.x, feedback.mouse_point.y, 
+                                                   self.ppm, self.image.rows, self.image.cols)
+            self.fg.append(Pixel(col, row))
+
+    def background_cb(self, feedback):
         if feedback.mouse_point_valid:
-            print "mouse at %0.2f, %0.2f" % (feedback.mouse_point.x, feedback.mouse_point.y)
+            (row, col) = im_utils.pixelsFromMeters(feedback.mouse_point.x, feedback.mouse_point.y,
+                                                   self.ppm, self.image.rows, self.image.cols)
+            self.bg.append(Pixel(col, row))
 
     def add_button(self):
-        print "add button called!"
-
         button_marker = Marker()
         button_marker.type = button_marker.TEXT_VIEW_FACING
         button_marker.scale.z = 1.0 # height of letter A
@@ -119,20 +122,19 @@ class EditPixelLabels():
         button_im.controls.append(button_control)
 
         self.im_server.insert(button_im)
-        self.im_server.setCallback(button_im.name, self.doneLabellingCB)
+        self.im_server.setCallback(button_im.name, self.done_labelling_cb)
         self.im_server.applyChanges()
 
 
-    # called when done button is clicked
-    def doneLabellingCB(self, feedback):
-        # This would be sloppy, but since there's only one menu item,
-        # can assume that it means return
-        print "doneLabellingCB called!!"
-
-        # TODO: update fg/bg lists?
-
+    # called when done button is clicked; cleans up the IMs, and lets 
+    # the main GUI know that labeling has finished
+    def done_labelling_cb(self, feedback):
         self.im_server.clear()
         self.im_server.applyChanges()
-
         self.hmi_callback()
 
+    def get_foreground(self):
+        return self.fg
+
+    def get_background(self):
+        return self.bg

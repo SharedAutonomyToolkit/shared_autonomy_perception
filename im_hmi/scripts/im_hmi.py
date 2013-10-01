@@ -12,12 +12,9 @@ from bounding_box import BoundingBox
 from edit_pixel_labels import EditPixelLabels
 
 # The role of this file is to match the appropriate IM-handling class to the
-# actionlib request received. 
+# actionlib request received.
 class IM_HMI():
     def __init__(self):
-        # create bounding_box interactive markers ...
-        # create actionlib server for obtaining feedback 
-
         # TODO: make topic a parameter
         self.bb_server = actionlib.SimpleActionServer('/get_bounding_box', 
                                                       BoundingBoxAction, 
@@ -40,6 +37,8 @@ class IM_HMI():
     def label_done_callback(self):
         self.label_active = False
 
+    # TODO: There's a lot of overlap between this and execute_bounding_box ...
+    #       any way to get rid of it?
     def execute_label_pixel(self, goal):
         print "execute_label_pixel called"
 
@@ -54,23 +53,18 @@ class IM_HMI():
                (not rospy.is_shutdown())):
             rr.sleep()
 
-        print "im_hmi/execute_label_pixel - done looping"
-        print "label_active: ", self.label_active
-        print "ros shutdown: ", rospy.is_shutdown()
-        print "preempt req: ", self.label_server.is_preempt_requested()
-
         if self.label_server.is_preempt_requested():
             mylabeller.cancel()
             self.label_server.set_preempted()
+        elif rospy.is_shutdown():
+            self.label_server.set_aborted()
         else:
-            # TODO: actually check the result of the points and reply correspondingly
-            result = True #mylabeller.get_result()
-            if result is None:
-                self.label_server.set_aborted()
-            else:
-                resp = EditPixelResult()
-                self.label_server.set_succeeded(resp)
-        
+            print "foreground: ", mylabeller.get_foreground()
+            print "background: ", mylabeller.get_background()
+            resp = EditPixelResult()
+            resp.fg = mylabeller.get_foreground()
+            resp.bg = mylabeller.get_background()
+            self.label_server.set_succeeded(resp)
 
 
     def bb_done_callback(self):
@@ -89,11 +83,6 @@ class IM_HMI():
         while (self.bb_active and (not self.bb_server.is_preempt_requested()) and 
                (not rospy.is_shutdown())):
             rr.sleep()
-
-        print "im_hmi/execute_bounding_box - done looping"
-        print "bb_active: ", self.bb_active
-        print "ros shutdown: ", rospy.is_shutdown()
-        print "preempt req: ", self.bb_server.is_preempt_requested()
 
         if self.bb_server.is_preempt_requested():
             mybb.cancel()
@@ -116,5 +105,3 @@ if __name__ == "__main__":
     my_hmi = IM_HMI()
     print "im_hmi initialized"
     rospy.spin()
-    
-
