@@ -73,12 +73,12 @@ class BoundingBox():
         only_entry = self.menu_handler.insert("Accept ROI", callback=self.acceptCB)
 
         # creating marker & control for roi; class var b/c other callbacks modify it
-        self.roi = InteractiveMarker()
-        self.roi.header.frame_id = "/camera_link"
-        self.roi.name = "ROI"
-        self.roi.description = "Selected ROI of image"
-        self.roi.pose.position.x = (self.x1 + self.x2) / 2
-        self.roi.pose.position.y = (self.y1 + self.y2) / 2
+        self.roi_im = InteractiveMarker()
+        self.roi_im.header.frame_id = "/camera_link"
+        self.roi_im.name = "ROI"
+        self.roi_im.description = ""
+        self.roi_im.pose.position.x = (self.x1 + self.x2) / 2
+        self.roi_im.pose.position.y = (self.y1 + self.y2) / 2
         # Create marker to display ROI in webtools/rviz
         roi_marker = Marker()
         roi_marker.type = Marker.CUBE
@@ -93,15 +93,15 @@ class BoundingBox():
         roi_control.interaction_mode = InteractiveMarkerControl.BUTTON
         roi_control.always_visible = True
         roi_control.markers.append(roi_marker)
-        self.roi.controls.append(roi_control)
-        self.im_server.insert(self.roi)
+        self.roi_im.controls.append(roi_control)
+        self.im_server.insert(self.roi_im)
         self.menu_handler.apply(self.im_server, "ROI")
         
         # creating marker & control for corners
         tl = InteractiveMarker()
         tl.header.frame_id = "/camera_link"
         tl.name = "tl"
-        tl.description = "top left corner of ROI"
+        tl.description = ""
         tl.pose.position.x = self.x1
         tl.pose.position.y = self.y1
         # marker s.t. we can have an initial pose
@@ -132,7 +132,7 @@ class BoundingBox():
         br = InteractiveMarker()
         br.header.frame_id = "/camera_link"
         br.name = "br"
-        br.description = "bottom right corner of ROI"
+        br.description = ""
         br.pose.position.x = self.x2
         br.pose.position.y = self.y2
         br_control = InteractiveMarkerControl()
@@ -198,12 +198,12 @@ class BoundingBox():
         self.hmi_callback()
 
     def updateROI(self):
-        self.roi.pose.position.x = (self.x1 + self.x2)/2
-        self.roi.pose.position.y = (self.y1 + self.y2)/2
-        scale = self.roi.controls[0].markers[0].scale
+        self.roi_im.pose.position.x = (self.x1 + self.x2)/2
+        self.roi_im.pose.position.y = (self.y1 + self.y2)/2
+        scale = self.roi_im.controls[0].markers[0].scale
         scale.x = self.x2 - self.x1
         scale.y = self.y2 - self.y1
-        self.im_server.insert(self.roi)
+        self.im_server.insert(self.roi_im)
         self.im_server.applyChanges()
 
 
