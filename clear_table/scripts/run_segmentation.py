@@ -88,13 +88,14 @@ class RunSegmentation():
 if __name__ == "__main__":
     rospy.init_node('run_segmentation')
 
-    mysegmenter = RunSegmentation()
-    data = mysegmenter.get_data()
-    if data is None:
-        print "run_segmentation - no data available!"
-        exit
+    while not rospy.is_shutdown():
+        mysegmenter = RunSegmentation()
+        data = mysegmenter.get_data()
+        if data is None:
+            print "run_segmentation - no data available!"
+            exit
 
-    print "got image data"
-    mask = mysegmenter.get_segmentation(data)
-    print "got mask"
-    mysegmenter.publish_points(data, mask)
+        print "got image data"
+        mask = mysegmenter.get_segmentation(data)
+        print "got mask"
+        mysegmenter.publish_points(data, mask)
