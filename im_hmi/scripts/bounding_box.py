@@ -1,6 +1,7 @@
 from math import pi
 
 from geometry_msgs.msg import Point
+import im_utils
 from interactive_markers.interactive_marker_server import *
 from interactive_markers.menu_handler import *        
 from std_msgs.msg import ColorRGBA
@@ -27,7 +28,6 @@ class BoundingBox():
         self.add_image()
         self.add_bounding_box()
 
-        
 
     def get_result(self):
         return self.result
@@ -50,7 +50,9 @@ class BoundingBox():
         for jj in xrange(0, self.image.cols, 3):
             for ii in xrange(0, self.image.rows, 3):
                 # sinking it a bit s.t. the Interactive Markers are easier to grab
-                pt = Point(1.0*jj/self.ppm, 1.0*(self.image.rows - ii)/self.ppm, -.05)
+                (xx, yy) = im_utils.metersFromPixels(ii, jj, self.ppm, self.image.rows, self.image.cols)
+                pt = Point(xx, yy, -0.05)
+
                 image_marker.points.append(pt)
                 # ROS is rgba, opencv is bgr
                 cc = ColorRGBA(1.0-self.image[ii,jj][2], 1.0-self.image[ii,jj][1], 1.0-self.image[ii,jj][0], 1.0)
@@ -169,8 +171,6 @@ class BoundingBox():
         menu_control.always_visible = True
         menu_control.markers.append(menu_marker)
         menu.controls.append(menu_control)
-        #self.im_server.insert(menu)
-        #menu_handler.apply(self.im_server, "acceptROI")
 
         self.im_server.applyChanges()
 
@@ -179,10 +179,8 @@ class BoundingBox():
         # can assume that it means return
         print "acceptCB called!!"
         # Convert from meters back to pixels 
-        row1 = self.image.rows - int(round(self.y1*self.ppm))
-        row2 = self.image.rows - int(round(self.y2*self.ppm))
-        col1 = int(round(self.x1*self.ppm))
-        col2 = int(round(self.x2*self.ppm))
+        (row1, col1) = im_utils.pixelsFromMeters(self.x1, self.y1, self.ppm, self.image.rows, self.image.cols)
+        (row2, col2) = im_utils.pixelsFromMeters(self.x2, self.y2, self.ppm, self.image.rows, self.image.cols)
         
         min_row = max(0, min(row1, row2))
         max_row = min(self.image.rows-1, max(row1, row2))
