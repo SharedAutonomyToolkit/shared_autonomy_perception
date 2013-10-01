@@ -1,13 +1,25 @@
+<!-- runs segmentation on a STANDALONE kinect -->
+
 <launch>
-  <!-- Launches the kinect. TODO: remap arg 'camera' here -->
+  <!-- namespace for the camera that we're listening to. -->
+  <arg name="kinect_name" value="lindzey_kinect"/>
+
+  <!-- Launches the kinect. -->
   <include file="$(find openni_launch)/launch/openni.launch">
+    <arg name="camera" value="$(arg kinect_name)"/>
     <arg name="depth_registration" value="true"/> 
   </include>
-	   
 
   <!-- the kinect's depth and rgb images are not published synchronously.
-  This gathers them and provides a service to obtain the most recent set -->
-  <node name="assemble_kinect" pkg="assemble_kinect" type="assemble_kinect"/>
+  This gathers them and provides a service to obtain the most recent set.
+  TODO: I'm not sure that this mapping is ideal, but it seems to match what
+  openni_kinect does -->
+  <node name="assemble_kinect" pkg="assemble_kinect" type="assemble_kinect">
+    <remap from="camera/rgb/image_color" to="$(arg kinect_name)/rgb/image_color"/>
+    <remap from="camera/depth_registered/image" to="$(arg kinect_name)/depth_registered/image"/>
+    <remap from="camera/depth_registered/camera_info" to="$(arg kinect_name)/depth_registered/camera_info"/>
+    <remap from="camera/depth_registered/points" to="$(arg kinect_name)/depth_registered/points"/>
+  </node>
 
   <!-- This handles the interactive segmentation of objects -->
   <!-- TODO: make the segmentation service + bb + image labeling topics/services

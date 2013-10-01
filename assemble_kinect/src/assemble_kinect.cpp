@@ -49,10 +49,10 @@ public:
 // TODO: parameterize the camera that we're listening to!!
 KinectAssembler::KinectAssembler() : 
   root_nh_(""), priv_nh_("~"),
-  image_sub_(root_nh_, "/camera/rgb/image_color", 1),
-  depth_sub_(root_nh_, "/camera/depth_registered/image", 1),
-  info_sub_(root_nh_, "/camera/depth_registered/camera_info", 1),
-  points_sub_(root_nh_, "/camera/depth_registered/points", 1),
+  image_sub_(root_nh_, "camera/rgb/image_color", 1),
+  depth_sub_(root_nh_, "camera/depth_registered/image", 1),
+  info_sub_(root_nh_, "camera/depth_registered/camera_info", 1),
+  points_sub_(root_nh_, "camera/depth_registered/points", 1),
   sync_(KinectSyncPolicy(10), image_sub_, depth_sub_, info_sub_, points_sub_) {
 
   sync_.registerCallback(boost::bind(&KinectAssembler::approxCB, this, _1, _2, _3, _4));
