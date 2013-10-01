@@ -75,13 +75,6 @@ class BoundingBox():
         menu_handler = MenuHandler()
         only_entry = menu_handler.insert("Accept ROI", callback=self.acceptCB)
 
-        # creating marker & control for roi; class var b/c other callbacks modify it
-        self.roi_im = InteractiveMarker()
-        self.roi_im.header.frame_id = "/camera_link"
-        self.roi_im.name = "ROI"
-        self.roi_im.description = ""
-        self.roi_im.pose.position.x = (self.x1 + self.x2) / 2
-        self.roi_im.pose.position.y = (self.y1 + self.y2) / 2
         # Create marker to display ROI in webtools/rviz
         roi_marker = Marker()
         roi_marker.type = Marker.CUBE
@@ -92,31 +85,26 @@ class BoundingBox():
         roi_marker.color.g = 0.5
         roi_marker.color.b = 0.5
         roi_marker.color.a = 0.5
-        roi_control = InteractiveMarkerControl()
-        roi_control.interaction_mode = InteractiveMarkerControl.BUTTON
-        roi_control.always_visible = True
-        roi_control.markers.append(roi_marker)
-        self.roi_im.controls.append(roi_control)
+
+        roi_control_button = InteractiveMarkerControl()
+        roi_control_button.interaction_mode = InteractiveMarkerControl.BUTTON
+        roi_control_button.always_visible = True
+        roi_control_button.markers.append(roi_marker)
+
+
+        # creating marker & control for roi; class var b/c other callbacks modify it
+        self.roi_im = InteractiveMarker()
+        self.roi_im.header.frame_id = "/camera_link"
+        self.roi_im.name = "ROI"
+        self.roi_im.description = ""
+        self.roi_im.pose.position.x = (self.x1 + self.x2) / 2
+        self.roi_im.pose.position.y = (self.y1 + self.y2) / 2
+        self.roi_im.controls.append(roi_control_button)
         self.im_server.insert(self.roi_im)
         menu_handler.apply(self.im_server, "ROI")
         
         # creating marker & control for corners
-        tl = InteractiveMarker()
-        tl.header.frame_id = "/camera_link"
-        tl.name = "tl"
-        tl.description = ""
-        tl.pose.position.x = self.x1
-        tl.pose.position.y = self.y1
-        # marker s.t. we can have an initial pose
-        tl_marker = Marker()
-        tl_marker.type = Marker.SPHERE
-        tl_marker.scale.x = 0.5
-        tl_marker.scale.y = 0.5
-        tl_marker.scale.z = 0.5
-        tl_marker.color.r = 1.0
-        tl_marker.color.g = 0.0
-        tl_marker.color.b = 0.0
-        tl_marker.color.g = 1.0
+        # TODO: I think that we could have all these controls attached to the same IM
 
         tl_control = InteractiveMarkerControl()
         tl_control.name = "tl_corner"
@@ -125,19 +113,19 @@ class BoundingBox():
         tl_control.orientation.y = qq[1]
         tl_control.orientation.z = qq[2]
         tl_control.orientation.w = qq[3]
-
         tl_control.interaction_mode = InteractiveMarkerControl.MOVE_PLANE
-        #tl_control.markers.append(tl_marker)
-        tl.controls.append(tl_control)
 
-        self.im_server.insert(tl, self.processTL)
+        tl_im = InteractiveMarker()
+        tl_im.header.frame_id = "/camera_link"
+        tl_im.name = "tl"
+        tl_im.description = ""
+        tl_im.pose.position.x = self.x1
+        tl_im.pose.position.y = self.y1
+        tl_im.controls.append(tl_control)
 
-        br = InteractiveMarker()
-        br.header.frame_id = "/camera_link"
-        br.name = "br"
-        br.description = ""
-        br.pose.position.x = self.x2
-        br.pose.position.y = self.y2
+        self.im_server.insert(tl_im, self.processTL)
+        
+        # And, for bottom-right corner
         br_control = InteractiveMarkerControl()
         br_control.name = "br_corner"
         qq = tf.transformations.quaternion_from_euler(0, pi/2, 0)
@@ -146,8 +134,15 @@ class BoundingBox():
         br_control.orientation.z = qq[2]
         br_control.orientation.w = qq[3]
         br_control.interaction_mode = InteractiveMarkerControl.MOVE_PLANE
-        br.controls.append(br_control)
-        self.im_server.insert(br, self.processBR)
+
+        br_im = InteractiveMarker()
+        br_im.header.frame_id = "/camera_link"
+        br_im.name = "br"
+        br_im.description = ""
+        br_im.pose.position.x = self.x2
+        br_im.pose.position.y = self.y2
+        br_im.controls.append(br_control)
+        self.im_server.insert(br_im, self.processBR)
 
         # separate menu handler for now - will merge with ROI eventually
         menu = InteractiveMarker()
