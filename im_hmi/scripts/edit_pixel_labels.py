@@ -40,24 +40,26 @@ class EditPixelLabels():
         image_marker.scale.y = 0.05
         image_marker.scale.z = 0.05
 
+        print self.image[0,0]
+        
         for jj in xrange(0, self.image.cols, 3):
             for ii in xrange(0, self.image.rows, 3):
                 # sinking it a bit s.t. the Interactive Markers are easier to grab
                 pt = Point(1.0*jj/self.ppm, 1.0*(self.image.rows - ii)/self.ppm, -.05)
                 image_marker.points.append(pt)
                 # ROS is rgba, opencv is bgr
+                # I have no idea why I ahve to invert these here
                 mask_val = self.mask[ii,jj]
-                red = 1.0-self.image[ii,jj][2]
-                green = 1.0-self.image[ii,jj][1]
-                blue = 1.0-self.image[ii,jj][0]
+                red = 255 - self.image[ii,jj][2]
+                green = 255 - self.image[ii,jj][1]
+                blue = 255 - self.image[ii,jj][0]
                 if (mask_val == 1) or (mask_val == 3):
                     cc = ColorRGBA(red, green, blue, 1.0)
                 else:
                     grey = 0.2989*red + 0.5870*green + 0.1140*blue
-                    if mask_val == 0:
-                        cc = ColorRGBA(grey, grey, grey, 0.25)
-                    else:
-                        cc = ColorRGBA(grey, grey, grey, 0.5)
+                    # int is required in order to not be random shades! 0.5 makes it lighter                
+                    grey = int(0.5*grey)
+                    cc = ColorRGBA(grey, grey, grey, 0.5)
                 image_marker.colors.append(cc)
 
         image_control = InteractiveMarkerControl()
