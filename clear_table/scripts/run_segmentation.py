@@ -38,11 +38,12 @@ class RunSegmentation():
         return resp
 
     def get_segmentation(self, data):
+        rospy.loginfo("waiting for segmentation server")
         self.segment_client.wait_for_server()    
         goal = SegmentGoal()
         goal.image = data.image
         goal.depth = data.depth
-
+        rospy.loginfo("got segmentation server")
         # this callback will set the member variable mask
         self.segment_client.send_goal(goal, done_cb=self.segmentDoneCB, 
                                       feedback_cb=self.segmentFeedbackCB)

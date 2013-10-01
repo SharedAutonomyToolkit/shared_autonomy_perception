@@ -67,6 +67,7 @@ class IM_HMI():
             resp.fg = mylabeller.get_foreground()
             resp.bg = mylabeller.get_background()
             self.label_server.set_succeeded(resp)
+        rospy.loginfo("returning from execute_label_pixel")
 
 
     def bb_done_callback(self):
@@ -101,6 +102,7 @@ class IM_HMI():
                 resp.min_col.data = col1
                 resp.max_col.data = col2
                 self.bb_server.set_succeeded(resp)
+        rospy.loginfo("exiting execute_bounding_box")
         
 if __name__ == "__main__":
     rospy.init_node("im_hmi")

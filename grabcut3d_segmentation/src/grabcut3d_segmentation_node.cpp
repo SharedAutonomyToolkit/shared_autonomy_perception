@@ -52,6 +52,7 @@ Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::stri
   label_client_(label_name, true),
   action_name_(segment_name) 
 {
+  ROS_INFO("grabcut3d_segmentation initialized");
   segment_server_.start();
 
 }
@@ -62,6 +63,7 @@ Grabcut3dSegmentation::~Grabcut3dSegmentation(void) {
 
 BBoxFinalState Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask) {
 
+  ROS_INFO("grabcut3d_segmentation in getPixeslLabels");
   // whether a preempt has been requested
   bool segment_preempted = false;
   BBoxFinalState label_state = FAILED;
@@ -115,6 +117,7 @@ BBoxFinalState Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& i
 BBoxFinalState Grabcut3dSegmentation::getBoundingBox(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal, 
 					       int &min_col, int &max_col, int &min_row, int &max_row) {
 
+  ROS_INFO("grabcut3d_segmentation in getBoundingBox");
   // whether a preempt has been requested
   bool segment_preempted = false;
   BBoxFinalState bb_state = FAILED;
@@ -230,12 +233,23 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const shared_autonomy_msgs::Segmen
   // * obtain labels/acceptance
   // * update mask w/ labels
 void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal) {
-
+  ROS_INFO("grabcut3d_segmentation::segmentExecuteCB called");
   // Check if HMI server is up; if not, we can't do segmentation
-  bool hmi_ready = bb_client_.waitForServer(ros::Duration(15.0));
-  if(!hmi_ready) {
-    segment_server_.setAborted();
-    return;
+  if(!bb_client_.isServerConnected()) {
+    bool bb_ready = bb_client_.waitForServer(ros::Duration(15.0));
+    if(!bb_ready) {
+      segment_server_.setAborted();
+      ROS_WARN("grabcut3dsegmentation could not execute segmentation - HMI bounding box not connected!");
+      return;
+    }
+  }
+  if(!label_client_.isServerConnected()) {
+    bool label_ready = label_client_.waitForServer(ros::Duration(15.0));
+    if(!label_ready) {
+      segment_server_.setAborted();
+      ROS_WARN("grabcut3dsegmentation could not execute segmentation - HMI pixel labeller not connected!");
+      return;
+    }
   }
   ROS_INFO("grabcut3d_segmentation got HMI server!");
 
