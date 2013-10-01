@@ -37,14 +37,19 @@ class RunSegmentation():
             
         return resp
 
-    def get_segmentation(self, data):
+    def connect(self):
         rospy.loginfo("waiting for segmentation server")
         self.segment_client.wait_for_server()    
+
+    def get_segmentation(self, data):
+
         goal = SegmentGoal()
         goal.image = data.image
         goal.depth = data.depth
         rospy.loginfo("got segmentation server")
+
         # this callback will set the member variable mask
+        self.mask = None
         self.segment_client.send_goal(goal, done_cb=self.segmentDoneCB, 
                                       feedback_cb=self.segmentFeedbackCB)
         self.segment_client.wait_for_result()
@@ -55,9 +60,10 @@ class RunSegmentation():
         print "I should be publishing points!"
         mybridge = CvBridge()
         img = mybridge.imgmsg_to_cv(mask)
+
         # TODO: I dislike having this dependency here on the cv encodings ... the binary transform should happen in grabcut3d_segmentation
-        # list of foreground indices 
-        # idxs = [[ii, jj] for jj in range(img.cols) for ii in range(img.rows) if (img[ii,jj] == 1 or img[ii,jj]==3)]
+        # TODO: depend on the read_points that should be in common_msgs?
+        # TODO: why didn't the uvs=idxs code work? x
         pt_gen = pts.read_points(data.points)#, uvs=idxs, skip_nans=True) # this didn't work!!
 
         out_pts = []
@@ -69,11 +75,7 @@ class RunSegmentation():
                         out_pts.append(pt[0:3])
         print "done creating output point cloud"
 
-        #pt_arr = array(pt_gen)#[pt for pt in pt_gen]
-        #print pt_arr
         out_cloud = pts.create_cloud_xyz32(data.points.header, out_pts)
-
-        # then, 
         self.point_publisher.publish(out_cloud)
 
     def segmentDoneCB(self, state, result):
@@ -89,12 +91,16 @@ class RunSegmentation():
 if __name__ == "__main__":
     rospy.init_node('run_segmentation')
 
+    mysegmenter = RunSegmentation()
+    mysegmenter.connect()
+
     while not rospy.is_shutdown():
-        mysegmenter = RunSegmentation()
+
         data = mysegmenter.get_data()
         if data is None:
-            print "run_segmentation - no data available!"
-            exit
+            rospy.loginfo("run_segmentation - no data available! sleeping for 5secs")
+            rospy.sleep(5.0)
+            continue
 
         print "got image data"
         mask = mysegmenter.get_segmentation(data)

@@ -18,6 +18,6 @@
   that the segmentation node depends on -->
   <node name="HMI" pkg="im_hmi" type="im_hmi.py"/>
 
-<!--  <node name="run_segmentation" pkg="clear_table" type="run_segmentation.py"/> -->
+  <node name="run_segmentation" pkg="clear_table" type="run_segmentation.py"/>
 
 </launch>
