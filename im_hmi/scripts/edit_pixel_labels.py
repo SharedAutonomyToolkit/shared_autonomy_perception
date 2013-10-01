@@ -34,9 +34,9 @@ class EditPixelLabels():
     def add_image(self):
         print "add image called!"
 
-        self.menu_handler = MenuHandler()
-        menu_foreground = self.menu_handler.insert("Foreground", callback=self.foregroundCB)
-        menu_background = self.menu_handler.insert("Background", callback=self.backgroundCB)
+        menu_handler = MenuHandler()
+        menu_foreground = menu_handler.insert("Foreground", callback=self.foregroundCB)
+        menu_background = menu_handler.insert("Background", callback=self.backgroundCB)
 
         image_marker = Marker()
         image_marker.type = image_marker.POINTS
@@ -71,14 +71,14 @@ class EditPixelLabels():
         image_control.interaction_mode = InteractiveMarkerControl.MENU
         image_control.markers.append(image_marker)
 
-        self.image_im = InteractiveMarker()
-        self.image_im.header.frame_id = "camera_link"
-        self.image_im.name = "LabeledImage"
-        self.image_im.description = ""
-        self.image_im.controls.append(image_control)
+        image_im = InteractiveMarker()
+        image_im.header.frame_id = "camera_link"
+        image_im.name = "LabeledImage"
+        image_im.description = ""
+        image_im.controls.append(image_control)
 
-        self.im_server.insert(self.image_im)
-        self.menu_handler.apply(self.im_server, "LabeledImage")
+        self.im_server.insert(image_im)
+        menu_handler.apply(self.im_server, "LabeledImage")
         self.im_server.applyChanges()
 
     def foregroundCB(self, feedback):

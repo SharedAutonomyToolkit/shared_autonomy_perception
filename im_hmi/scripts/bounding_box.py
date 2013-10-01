@@ -69,8 +69,8 @@ class BoundingBox():
         self.im_server.applyChanges()
 
     def add_bounding_box(self):
-        self.menu_handler = MenuHandler()
-        only_entry = self.menu_handler.insert("Accept ROI", callback=self.acceptCB)
+        menu_handler = MenuHandler()
+        only_entry = menu_handler.insert("Accept ROI", callback=self.acceptCB)
 
         # creating marker & control for roi; class var b/c other callbacks modify it
         self.roi_im = InteractiveMarker()
@@ -95,7 +95,7 @@ class BoundingBox():
         roi_control.markers.append(roi_marker)
         self.roi_im.controls.append(roi_control)
         self.im_server.insert(self.roi_im)
-        self.menu_handler.apply(self.im_server, "ROI")
+        menu_handler.apply(self.im_server, "ROI")
         
         # creating marker & control for corners
         tl = InteractiveMarker()
@@ -170,7 +170,7 @@ class BoundingBox():
         menu_control.markers.append(menu_marker)
         menu.controls.append(menu_control)
         #self.im_server.insert(menu)
-        #self.menu_handler.apply(self.im_server, "acceptROI")
+        #menu_handler.apply(self.im_server, "acceptROI")
 
         self.im_server.applyChanges()
 
