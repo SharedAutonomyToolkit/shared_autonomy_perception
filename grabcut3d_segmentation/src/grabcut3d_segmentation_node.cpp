@@ -20,7 +20,7 @@ enum BBoxFinalState {
 
  **/
 
-class BenSegmentation {
+class Grabcut3dSegmentation {
 
 protected:
   ros::NodeHandle nh_;
@@ -40,14 +40,14 @@ protected:
   bool matFromImageMessage(const sensor_msgs::Image& image_msg, cv::Mat& image);
 
 public:
-  BenSegmentation(std::string segment_name, std::string bb_name, std::string label_name);
-  ~BenSegmentation(void);
+  Grabcut3dSegmentation(std::string segment_name, std::string bb_name, std::string label_name);
+  ~Grabcut3dSegmentation(void);
   void segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &goal);
 
 };
 
-BenSegmentation::BenSegmentation(std::string segment_name, std::string bb_name, std::string label_name)  : 
-  segment_server_(nh_, segment_name, boost::bind(&BenSegmentation::segmentExecuteCB, this, _1), false), 
+Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::string bb_name, std::string label_name)  : 
+  segment_server_(nh_, segment_name, boost::bind(&Grabcut3dSegmentation::segmentExecuteCB, this, _1), false), 
   bb_client_(bb_name, true), 
   label_client_(label_name, true),
   action_name_(segment_name) 
@@ -56,11 +56,11 @@ BenSegmentation::BenSegmentation(std::string segment_name, std::string bb_name, 
 
 }
 
-BenSegmentation::~BenSegmentation(void) {
+Grabcut3dSegmentation::~Grabcut3dSegmentation(void) {
 
 }
 
-BBoxFinalState BenSegmentation::getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask) {
+BBoxFinalState Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask) {
 
   // whether a preempt has been requested
   bool segment_preempted = false;
@@ -73,7 +73,7 @@ BBoxFinalState BenSegmentation::getPixelLabels(const sensor_msgs::Image& image, 
   label_goal.mask = mask;
   label_client_.sendGoal(label_goal);
 
-  ROS_INFO("ben_segmentation sent edit pixel goal");
+  ROS_INFO("grabcut3d_segmentation sent edit pixel goal");
 
   // wait for bounding box result OR preemption
   ros::Rate rr(10);
@@ -82,22 +82,22 @@ BBoxFinalState BenSegmentation::getPixelLabels(const sensor_msgs::Image& image, 
     rr.sleep();
   } 
 
-  ROS_INFO("ben_segmentation broke out of loop waiting for pixel label result");
+  ROS_INFO("grabcut3d_segmentation broke out of loop waiting for pixel label result");
 
   if(label_client_.getState().isDone()) {
     if(label_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
       // TODO: in future, this would be the only state that continues to the next
       // segmentation step; the rest would return a preempted/aborted state
-      ROS_INFO("ben_segmentation's label client returned successfully");
+      ROS_INFO("grabcut3d_segmentation's label client returned successfully");
       label_state = SUCCEEDED;
     }
     else { // preempted, aborted, rejected, etc. ...
-      ROS_INFO("ben_segmentation edit pixel client returned UNsuccessfully");
+      ROS_INFO("grabcut3d_segmentation edit pixel client returned UNsuccessfully");
       label_state = FAILED;
     }
   }
   else if (segment_preempted) {
-    ROS_INFO("ben_segmentation - preempt requested");
+    ROS_INFO("grabcut3d_segmentation - preempt requested");
     //request preempt 
     label_client_.cancelGoal();
     label_client_.waitForResult(ros::Duration(15.0));
@@ -112,7 +112,7 @@ BBoxFinalState BenSegmentation::getPixelLabels(const sensor_msgs::Image& image, 
 }
 
 
-BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal, 
+BBoxFinalState Grabcut3dSegmentation::getBoundingBox(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal, 
 					       int &min_col, int &max_col, int &min_row, int &max_row) {
 
   // whether a preempt has been requested
@@ -125,7 +125,7 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
   bb_goal.image = segment_goal->image;
   bb_client_.sendGoal(bb_goal);
 
-  ROS_INFO("ben_segmentation sent goal");
+  ROS_INFO("grabcut3d_segmentation sent goal");
 
   // wait for bounding box result OR preemption
   ros::Rate rr(10);
@@ -134,13 +134,13 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
     rr.sleep();
   } 
 
-  ROS_INFO("ben_segmentation broke out of loop waiting for bbox result");
+  ROS_INFO("grabcut3d_segmentation broke out of loop waiting for bbox result");
 
   if(bb_client_.getState().isDone()) {
     if(bb_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
       // TODO: in future, this would be the only state that continues to the next
       // segmentation step; the rest would return a preempted/aborted state
-      ROS_INFO("ben_segmentation's bbox client returned successfully");
+      ROS_INFO("grabcut3d_segmentation's bbox client returned successfully");
       bb_result = *bb_client_.getResult();
       min_col = bb_result.min_col.data;
       max_col = bb_result.max_col.data;
@@ -150,12 +150,12 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
       bb_state = SUCCEEDED;
     }
     else { // preempted, aborted, rejected, etc. ...
-      ROS_INFO("ben_segmentation bbox client returned UNsuccessfully");
+      ROS_INFO("grabcut3d_segmentation bbox client returned UNsuccessfully");
       bb_state = FAILED;
     }
   }
   else if (segment_preempted) {
-    ROS_INFO("ben_segmentation - preempt requested");
+    ROS_INFO("grabcut3d_segmentation - preempt requested");
     //request preempt 
     bb_client_.cancelGoal();
     bb_client_.waitForResult(ros::Duration(15.0));
@@ -170,7 +170,7 @@ BBoxFinalState BenSegmentation::getBoundingBox(const shared_autonomy_msgs::Segme
 }
 
 // fill mask in w/ bounds from bbox call
-void BenSegmentation::maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
+void Grabcut3dSegmentation::maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
   cv::Point p1 = cv::Point(min_col, min_row);
   cv::Point p2 = cv::Point(max_col, max_row);
   cv::rectangle(mask, p1, p2, 1, CV_FILLED);
@@ -183,7 +183,7 @@ void BenSegmentation::maskFromBB(cv::Mat &mask, int min_col, int max_col, int mi
  * @param image - opencv Mat image
  *
  */
-bool BenSegmentation::matFromImageMessage(const sensor_msgs::Image& image_msg, cv::Mat& image) {
+bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_msg, cv::Mat& image) {
   // converts ROS images to OpenCV
   cv_bridge::CvImagePtr cv_ptr;
   try {
@@ -200,7 +200,7 @@ bool BenSegmentation::matFromImageMessage(const sensor_msgs::Image& image_msg, c
 
 
 // fill mask in w/ result from calling grabcut_3d w/ bounding box
-void BenSegmentation::grabcutMaskFromBB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal, cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
+void Grabcut3dSegmentation::grabcutMaskFromBB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal, cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
 
   cv::Mat rgb_image;
   matFromImageMessage(segment_goal->image, rgb_image);
@@ -229,7 +229,7 @@ void BenSegmentation::grabcutMaskFromBB(const shared_autonomy_msgs::SegmentGoalC
   // * bbox bounds to mask
   // * obtain labels/acceptance
   // * update mask w/ labels
-void BenSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal) {
+void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal) {
 
   // Check if HMI server is up; if not, we can't do segmentation
   bool hmi_ready = bb_client_.waitForServer(ros::Duration(15.0));
@@ -237,7 +237,7 @@ void BenSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalCo
     segment_server_.setAborted();
     return;
   }
-  ROS_INFO("ben_segmentation got HMI server!");
+  ROS_INFO("grabcut3d_segmentation got HMI server!");
 
   // TODO: I dislike how this function also uses segment_server_, but I think 
   // that it has to in order to handle the preemption stuff
@@ -307,8 +307,8 @@ void BenSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalCo
 }
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "ben_segmentation_node");
-  BenSegmentation segmenter(ros::this_node::getName(), "/get_bounding_box", "/edit_pixel_labels");
+  ros::init(argc, argv, "grabcut3d_segmentation_node");
+  Grabcut3dSegmentation segmenter(ros::this_node::getName(), "/get_bounding_box", "/edit_pixel_labels");
   ros::spin();
   return 0;
 }

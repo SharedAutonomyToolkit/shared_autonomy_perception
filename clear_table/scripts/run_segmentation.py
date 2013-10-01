@@ -24,7 +24,7 @@ class RunSegmentation():
     def __init__(self):
         self.kinect_client = rospy.ServiceProxy('assemble_kinect', KinectAssembly)
         self.point_publisher = rospy.Publisher('segmented_points', PointCloud2)
-        self.segment_client = actionlib.SimpleActionClient('/ben_segmentation_node', SegmentAction)
+        self.segment_client = actionlib.SimpleActionClient('/grabcut3d_segmentation_node', SegmentAction)
 
         self.mask = None
 
@@ -54,7 +54,7 @@ class RunSegmentation():
         print "I should be publishing points!"
         mybridge = CvBridge()
         img = mybridge.imgmsg_to_cv(mask)
-        # TODO: I dislike having this dependency here on the cv encodings ... the binary transform should happen in ben_segmentation
+        # TODO: I dislike having this dependency here on the cv encodings ... the binary transform should happen in grabcut3d_segmentation
         # list of foreground indices 
         # idxs = [[ii, jj] for jj in range(img.cols) for ii in range(img.rows) if (img[ii,jj] == 1 or img[ii,jj]==3)]
         pt_gen = pts.read_points(data.points)#, uvs=idxs, skip_nans=True) # this didn't work!!

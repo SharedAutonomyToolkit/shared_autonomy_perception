@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(ben_segmentation)
+project(grabcut3d_segmentation)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -53,7 +53,7 @@ find_package(OpenCV REQUIRED)
 # This only matters if anothe rpackage includes this one
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES ben_segmentation
+#  LIBRARIES grabcut3d_segmentation
 #  CATKIN_DEPENDS actionlib roscpp shared_autonomy_msgs
 #  DEPENDS OpenCV
 )
@@ -71,20 +71,20 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(ben_segmentation
-#   src/${PROJECT_NAME}/ben_segmentation.cpp
+# add_library(grabcut3d_segmentation
+#   src/${PROJECT_NAME}/grabcut3d_segmentation.cpp
 # )
 
 ## Declare a cpp executable
-add_executable(ben_segmentation_node src/ben_segmentation_node.cpp)
+add_executable(grabcut3d_segmentation_node src/grabcut3d_segmentation_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # This fixes 
-add_dependencies(ben_segmentation_node shared_autonomy_msgs_gencpp)
+add_dependencies(grabcut3d_segmentation_node shared_autonomy_msgs_gencpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(ben_segmentation_node
+target_link_libraries(grabcut3d_segmentation_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
 )
@@ -104,7 +104,7 @@ target_link_libraries(ben_segmentation_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS ben_segmentation ben_segmentation_node
+# install(TARGETS grabcut3d_segmentation grabcut3d_segmentation_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -129,7 +129,7 @@ target_link_libraries(ben_segmentation_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_ben_segmentation.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_grabcut3d_segmentation.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
