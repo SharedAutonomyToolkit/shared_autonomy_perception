@@ -39,7 +39,7 @@ class BoundingBox():
 
 
     def add_image(self):
-        print "add image called!"
+        rospy.loginfo("add image called!")
 
         image_marker = Marker()
         image_marker.type = image_marker.POINTS
@@ -72,7 +72,7 @@ class BoundingBox():
         self.im_server.applyChanges()
 
     def add_bounding_box(self):
-        print "add_bounding_box called!"
+        rospy.loginfo("add_bounding_box called!")
 
         menu_handler = MenuHandler()
         only_entry = menu_handler.insert("Accept ROI", callback=self.acceptCB)
@@ -217,10 +217,10 @@ class BoundingBox():
     # TODO: I'm not sure how to make this work w/ 
     def process_feedback(self, feedback):
         if feedback.control_name == "tl_corner":
-            print "got tl feedback"
+            rospy.loginfo("got tl feedback")
             #self.processTL(feedback)
         elif feedback.control_name == "br_corner":
-            print "got br feedback"
+            rospy.loginfo("got br feedback")
             #self.processBR(feedback)
         
 

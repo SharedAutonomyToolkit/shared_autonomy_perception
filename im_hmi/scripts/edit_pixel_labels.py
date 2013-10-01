@@ -34,7 +34,7 @@ class EditPixelLabels():
         self.im_server.applyChanges()
 
     def add_image(self):
-        print "add image called!"
+        rospy.loginfo("add image called!")
 
         menu_handler = MenuHandler()
         menu_foreground = menu_handler.insert("Foreground", callback=self.foreground_cb)

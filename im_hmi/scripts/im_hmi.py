@@ -40,16 +40,18 @@ class IM_HMI():
     # TODO: There's a lot of overlap between this and execute_bounding_box ...
     #       any way to get rid of it?
     def execute_label_pixel(self, goal):
-        print "execute_label_pixel called"
+        rospy.loginfo("execute_label_pixel called")
 
         cv_im = self.cv_bridge.imgmsg_to_cv(goal.image)
         cv_mask = self.cv_bridge.imgmsg_to_cv(goal.mask)
 
         self.label_active = True
-        mylabeller = EditPixelLabels(self.label_done_callback, self.im_server, cv_im, cv_mask)
+        mylabeller = EditPixelLabels(self.label_done_callback, self.im_server, 
+                                     cv_im, cv_mask)
 
         rr = rospy.Rate(10)
-        while (self.label_active and (not self.label_server.is_preempt_requested()) and
+        while (self.label_active and 
+               (not self.label_server.is_preempt_requested()) and
                (not rospy.is_shutdown())):
             rr.sleep()
 
@@ -59,8 +61,8 @@ class IM_HMI():
         elif rospy.is_shutdown():
             self.label_server.set_aborted()
         else:
-            print "foreground: ", mylabeller.get_foreground()
-            print "background: ", mylabeller.get_background()
+            rospy.loginfo("foreground: %r" % mylabeller.get_foreground())
+            rospy.loginfo("background: %r" % mylabeller.get_background())
             resp = EditPixelResult()
             resp.fg = mylabeller.get_foreground()
             resp.bg = mylabeller.get_background()
@@ -71,7 +73,7 @@ class IM_HMI():
         self.bb_active = False
 
     def execute_bounding_box(self, goal):
-        print "execute_bounding_box called"
+        rospy.loginfo("execute_bounding_box called")
 
         # convert goal image to opencv
         cv_im = self.cv_bridge.imgmsg_to_cv(goal.image)
@@ -103,5 +105,5 @@ class IM_HMI():
 if __name__ == "__main__":
     rospy.init_node("im_hmi")
     my_hmi = IM_HMI()
-    print "im_hmi initialized"
+    rospy.loginfo("im_hmi initialized")
     rospy.spin()
