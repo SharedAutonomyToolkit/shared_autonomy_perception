@@ -6,29 +6,27 @@ They'll eventually come together into the pipeline ... at this point,
 the segmentation is a simple pass-through, labeling all points within 
 the bounding box as foreground. 
 
-To test the current setup (launch file coming soon):
+This pipeline depends on the catkenized version of smach. To obtain that:
+  * cd ~/catkin_ws/src
+  * git clone https://github.com/ros/executive_smach.git executive_smach
+  * cd executive_smach
+  * git checkout groovy-devel
+  
+To run the current setup:
 
 1) roscore
 
-2) rosrun openni_launch openni.launch
+2) roscd shared_autonomy_launch/launch
 
-3) rosrun rqt_reconfigure rqt_reconfigure; camera -> driver -> check "depth_registration"
+3) roslaunch run_segmentation.launch
 
-4) rosrun assemble_kinect assemble_kinect
-
-5) rosrun ben_segmentation ben_segmentation_node
-
-6) rosrun im_hmi im_hmi.py
-
-7) rosrun rviz rviz; set it up with:
+4) rosrun rviz rviz; set it up with:
   * Fixed Frame /camera_link
   * PointCloud2 /camera/depth_registered/points 
   * PointCloud2 /segmented_points
   * InteractiveMarkers /im_gui/update
 
-8) rosrun clear_table run_segmentation.py
-
-9) in rviz:
+5) in rviz:
   * drag corners of the interactive marker to enclose the object you want to segment
   * right click on IM -> accept ROI 
   * check that the points published on /segmented_points were all of the 3d points inside the bounding box
@@ -44,21 +42,27 @@ Module organization:
 https://github.com/ros-perception/image_pipeline/blob/groovy-devel/camera_calibration/src/camera_calibration/approxsync.py 
 
 
-* ben_segmentation - c++ node that attempts to reimplement ben's code, but isolated from the GUI stuff
+* grabcut3d_segmentation - c++ node that attempts to reimplement ben's code, but isolated from the GUI stuff
 
 * im_hmi - Python node that implements both the interactive marker server and an actionlib server that handles requests for obtaining a bounding box
 
-* shared_autonomy_msgs - isolating all of the actionlib messages
-  * BoundingBox - given an image, receives {minx, maxx, miny, maxy}
-  * Segment - given RGB and D images, returns mask of object
-
-* webtools
-  * im_gui.html - page to show interactive markers produced by im_hmi
-  * ros_testing.html - page to demonstrate subscribing/publishing to ros topics + creating html buttons/fields
+* shared_autonomy_msgs - isolating all of the messages we use for shared autonomy
+  * actions: 
+    - BoundingBox - given an image, receives {minx, maxx, miny, maxy}
+    - EditPixel - given an image and a mask, returns list of (mislabeled) foreground and background pixels
+    - Segment - given RGB and D images, returns mask of object
+  * messages:
+    - Pixel - I couldn't find this anywhere else ... seems like it should exist?
+  * services:
+    - KinectAssembly - returns associated depth/rgb data
 
 * clear_table 
-  * clear_table.py - smach state machine that'll eventually have setup->segment->getGrasps->pickUp->drop. For now, it transitions states on human keyboard input, uses simple_robot_control to move torso/head/arms (commented out for testing on laptop), and the starts of an actionlib client for getting segmentations.
   * run_segmentation.py - standalone script that handles actionlib stuff for running segmentation but nothing else. 
+  * clear_table.py (not yet finished!) - smach state machine that'll eventually have setup->segment->getGrasps->pickUp->drop. For now, it transitions states on human keyboard input, uses simple_robot_control to move torso/head/arms (commented out for testing on laptop), and the starts of an actionlib client for getting segmentations.
+
+* webtools (Not yet fully integrated!)
+  * im_gui.html - page to show interactive markers produced by im_hmi
+  * ros_testing.html - page to demonstrate subscribing/publishing to ros topics + creating html buttons/fields
 
 * random_snippets:
   * simple_robot_control.ipynb - examples of how to interact with all the simple_robot_control commands
