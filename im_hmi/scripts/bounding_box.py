@@ -18,21 +18,22 @@ class BoundingBox():
         self.image = cv_bridge.imgmsg_to_cv(image)
 
         rospy.loginfo("created BoundingBox with frame %s" % image.header.frame_id)
-        # starting coordinates of ROI
-        self.x1 = 1.0
-        self.x2 = 2.0 # needs to be set as float here ... 
-        self.y1 = 1.0
-        self.y2 = 2.0
         
         # pixels-per-m in published markers
-        self.ppm = 100
+        self.ppm = rospy.get_param("~ppm", 100)
+
+        # starting coordinates of ROI; need to be floats!
+        # (This is arbitrary - just needs to be on top of the image)
+        self.x1 = 0.25*self.image.cols/self.ppm
+        self.x2 = 0.75*self.image.cols/self.ppm
+        self.y1 = 0.25*self.image.rows/self.ppm
+        self.y2 = 0.75*self.image.rows/self.ppm
 
         # used to store the result once it's been computed
         self.result = None
 
         self.add_image()
         self.add_bounding_box()
-
 
     def get_result(self):
         return self.result
@@ -41,7 +42,6 @@ class BoundingBox():
     def cancel(self):
         self.im_server.clear()
         self.im_server.applyChanges()
-
 
     def add_image(self):
         rospy.loginfo("add image called!")
@@ -52,16 +52,15 @@ class BoundingBox():
         image_marker.scale.y = 0.05
         image_marker.scale.z = 0.05
 
-        for jj in xrange(0, self.image.cols, 3):
-            for ii in xrange(0, self.image.rows, 3):
+        for col in xrange(0, self.image.cols, 3):
+            for row in xrange(0, self.image.rows, 3):
                 # sinking it a bit s.t. the Interactive Markers are easier to grab
-                (xx, yy) = im_utils.metersFromPixels(ii, jj, self.ppm, self.image.rows, self.image.cols)
+                (xx, yy) = im_utils.metersFromPixels(row, col, self.ppm, self.image.rows, self.image.cols)
                 pt = Point(xx, yy, -0.05)
-
                 image_marker.points.append(pt)
-                # TODO: does this conversion belong in im_utils?
-                # ROS is rgba, opencv is bgr
-                cc = ColorRGBA(1.0-self.image[ii,jj][2], 1.0-self.image[ii,jj][1], 1.0-self.image[ii,jj][0], 1.0)
+
+                (red, green, blue) = im_utils.rosFromCVbridgeColor(self.image[row,col])
+                cc = ColorRGBA(red, green, blue, 1.0)
                 image_marker.colors.append(cc)
 
         image_control = InteractiveMarkerControl()

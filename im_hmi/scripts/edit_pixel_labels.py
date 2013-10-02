@@ -21,7 +21,7 @@ class EditPixelLabels():
         self.mask = cv_bridge.imgmsg_to_cv(mask)
 
         # pixels-per-m for published markers
-        self.ppm = 100
+        self.ppm = rospy.get_param("~ppm", 100)
 
         # lists of pixels that'll be returned
         self.fg = []
@@ -50,21 +50,22 @@ class EditPixelLabels():
         image_marker.scale.y = 0.05
         image_marker.scale.z = 0.05
 
-        for jj in xrange(0, self.image.cols, 3):
-            for ii in xrange(0, self.image.rows, 3):
+        # displaying every pixel is too much; downsample before turning image into IM
+        for col in xrange(0, self.image.cols, 3):
+            for row in xrange(0, self.image.rows, 3):
                 # sinking it a bit s.t. the Interactive Markers are easier to grab
-                pt = Point(1.0*jj/self.ppm, 1.0*(self.image.rows - ii)/self.ppm, -.05)
+                (xx, yy) = im_utils.metersFromPixels(row, col, self.ppm, self.image.rows, self.image.cols)
+                pt = Point(xx, yy, -0.05)
                 image_marker.points.append(pt)
-                # ROS is rgba, opencv is bgr
-                # I have no idea why I ahve to invert these here
-                mask_val = self.mask[ii,jj]
-                red = 255 - self.image[ii,jj][2]
-                green = 255 - self.image[ii,jj][1]
-                blue = 255 - self.image[ii,jj][0]
+
+                mask_val = self.mask[row,col]
+                (red, green, blue) = im_utils.rosFromCVbridgeColor(self.image[row,col])
+                # TODO: these are magic numbers from opencv, indicating forground/probable foreground
+                # (in OpenCV, they're cv::GC_FGC cf::GC_PR_FGD)
                 if (mask_val == 1) or (mask_val == 3):
                     cc = ColorRGBA(red, green, blue, 1.0)
                 else:
-                    grey = 0.2989*red + 0.5870*green + 0.1140*blue
+                    grey = im_utils.greyFromRGB(red, green, blue)
                     # int is required in order to not be random shades! 0.5 makes it lighter                
                     grey = int(0.5*grey)
                     cc = ColorRGBA(grey, grey, grey, 0.5)

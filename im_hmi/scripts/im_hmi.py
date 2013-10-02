@@ -15,7 +15,6 @@ from edit_pixel_labels import EditPixelLabels
 # actionlib request received.
 class IM_HMI():
     def __init__(self):
-        # TODO: make topic a parameter
         self.bb_server = actionlib.SimpleActionServer('bbox_service', 
                                                       BoundingBoxAction, 
                                                       execute_cb=self.execute_bounding_box,
@@ -32,6 +31,7 @@ class IM_HMI():
         self.label_active = False
 
         self.im_server = InteractiveMarkerServer("im_gui")
+        self.loop_rate = rospy.get_param("~loop_rate", 10.0)
 
         
     def label_done_callback(self):
@@ -46,7 +46,7 @@ class IM_HMI():
         mylabeller = EditPixelLabels(self.label_done_callback, self.im_server, 
                                      goal.image, goal.mask)
 
-        rr = rospy.Rate(10)
+        rr = rospy.Rate(self.loop_rate)
         while (self.label_active and 
                (not self.label_server.is_preempt_requested()) and
                (not rospy.is_shutdown())):
@@ -76,7 +76,7 @@ class IM_HMI():
         self.bb_active = True
         mybb = BoundingBox(self.bb_done_callback, self.im_server, goal.image)
 
-        rr = rospy.Rate(10)
+        rr = rospy.Rate(self.loop_rate)
         while (self.bb_active and (not self.bb_server.is_preempt_requested()) and 
                (not rospy.is_shutdown())):
             rr.sleep()
