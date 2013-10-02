@@ -92,7 +92,6 @@ BBoxFinalState Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& i
   BBoxFinalState label_state = FAILED;
   // Package up segmentation goal for the HMI, and send it out
   shared_autonomy_msgs::EditPixelGoal label_goal;
-  // TODO: pass this in as parameter
   shared_autonomy_msgs::EditPixelResult label_result;
   label_goal.image = image;
   label_goal.mask = mask;
@@ -111,8 +110,6 @@ BBoxFinalState Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& i
 
   if(label_client_.getState().isDone()) {
     if(label_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-      // TODO: in future, this would be the only state that continues to the next
-      // segmentation step; the rest would return a preempted/aborted state
       ROS_INFO("grabcut3d_segmentation's label client returned successfully");
       label_state = SUCCEEDED;
     }
@@ -141,12 +138,10 @@ BBoxFinalState Grabcut3dSegmentation::getBoundingBox(const shared_autonomy_msgs:
 					       int &min_col, int &max_col, int &min_row, int &max_row) {
 
   ROS_INFO("grabcut3d_segmentation in getBoundingBox");
-  // whether a preempt has been requested
   bool segment_preempted = false;
   BBoxFinalState bb_state = FAILED;
-  // Package up segmentation goal for the HMI, and send it out
+
   shared_autonomy_msgs::BoundingBoxGoal bb_goal;
-  // TODO: pass this in as parameter
   shared_autonomy_msgs::BoundingBoxResult bb_result;
   bb_goal.image = segment_goal->image;
   bb_client_.sendGoal(bb_goal);
@@ -154,7 +149,7 @@ BBoxFinalState Grabcut3dSegmentation::getBoundingBox(const shared_autonomy_msgs:
   ROS_INFO("grabcut3d_segmentation sent goal");
 
   // wait for bounding box result OR preemption
-  ros::Rate rr(10);
+  ros::Rate rr(loop_rate_);
   while (!bb_client_.getState().isDone() and ros::ok() and !segment_preempted) {
     segment_preempted = segment_server_.isPreemptRequested();
     rr.sleep();
@@ -164,8 +159,6 @@ BBoxFinalState Grabcut3dSegmentation::getBoundingBox(const shared_autonomy_msgs:
 
   if(bb_client_.getState().isDone()) {
     if(bb_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
-      // TODO: in future, this would be the only state that continues to the next
-      // segmentation step; the rest would return a preempted/aborted state
       ROS_INFO("grabcut3d_segmentation's bbox client returned successfully");
       bb_result = *bb_client_.getResult();
       min_col = bb_result.min_col.data;
@@ -210,7 +203,6 @@ void Grabcut3dSegmentation::maskFromBB(cv::Mat &mask, int min_col, int max_col, 
  *
  */
 bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_msg, cv::Mat& image) {
-  // converts ROS images to OpenCV
   cv_bridge::CvImagePtr cv_ptr;
   try {
     cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
@@ -219,7 +211,6 @@ bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return false;
   }
-  
   image = cv_ptr->image;
   return true;
 }
@@ -243,12 +234,7 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const shared_autonomy_msgs::Segmen
   cv::Mat fgd_model;
 
   grabCut3D(rgb_image, rgb_image, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
-
-  //cv::Point p1 = cv::Point(min_col, min_row);
-  //cv::Point p2 = cv::Point(max_col, max_row);
-  //cv::rectangle(mask, p1, p2, 1, CV_FILLED);
 }
-
 
   // TODO: This needs some sub-functions...
   // * obtain bounding_box
