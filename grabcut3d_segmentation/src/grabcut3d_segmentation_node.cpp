@@ -15,15 +15,11 @@ enum BBoxFinalState {
   FAILED
 };
 
-/**
-
-
- **/
-
 class Grabcut3dSegmentation {
 
 protected:
-  ros::NodeHandle nh_;
+  ros::NodeHandle root_nh_;
+  ros::NodeHandle priv_nh_;
   actionlib::SimpleActionServer<shared_autonomy_msgs::SegmentAction> segment_server_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::EditPixelAction> label_client_;
@@ -38,6 +34,12 @@ protected:
   void grabcutMaskFromBB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal, cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
   bool matFromImageMessage(const sensor_msgs::Image& image_msg, cv::Mat& image);
 
+  // -------------------- parameters ------------------
+  double loop_rate_;
+  double preempt_wait_; // how long to give servers to cancel the goal
+  double connect_wait_; // how long to wait when trying to initially connect
+  int grabcut_iters_; // how many iterations to allow grabcut3D
+
 public:
   Grabcut3dSegmentation(std::string segment_name, std::string bb_name, std::string label_name);
   ~Grabcut3dSegmentation(void);
@@ -46,14 +48,35 @@ public:
 };
 
 Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::string bb_name, std::string label_name)  : 
-  segment_server_(nh_, segment_name, boost::bind(&Grabcut3dSegmentation::segmentExecuteCB, this, _1), false), 
+  root_nh_(""), priv_nh_("~"),
+  segment_server_(root_nh_, segment_name, boost::bind(&Grabcut3dSegmentation::segmentExecuteCB, this, _1), false), 
   bb_client_(bb_name, true), 
   label_client_(label_name, true),
   action_name_(segment_name) 
 {
+  // initialize all parameters
+  priv_nh_.param<double>(std::string("loop_rate"), loop_rate_, 10.0);
+  priv_nh_.param<double>(std::string("preempt_wait"), preempt_wait_, 15.0);
+  priv_nh_.param<double>(std::string("connect_wait"), connect_wait_, 20.0);
+  priv_nh_.param<int>(std::string("grabcut_iters"), grabcut_iters_, 5);
 
-  ROS_INFO("grabcut3d_segmentation initialized");
+
+
+  ROS_INFO("grabcut3D segmentation initialized");
   segment_server_.start();
+
+  // This is how I'm testing that I've correctly hooked up the parameters ... 
+  ros::Duration(0.1).sleep();
+  ROS_INFO("PARAMETERS");
+  ros::Duration(0.1).sleep();
+  ROS_INFO("loop rate: %0.2f", loop_rate_);
+  ros::Duration(0.1).sleep();
+  ROS_INFO("preempt wait: %0.2f", preempt_wait_);
+  ros::Duration(0.1).sleep();
+  ROS_INFO("connect wait: %0.2f", connect_wait_);
+  ros::Duration(0.1).sleep();
+  ROS_INFO("grabcut iters: %d", grabcut_iters_);
+  ros::Duration(0.1).sleep();
 
 }
 
@@ -78,7 +101,7 @@ BBoxFinalState Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& i
   ROS_INFO("grabcut3d_segmentation sent edit pixel goal");
 
   // wait for bounding box result OR preemption
-  ros::Rate rr(10);
+  ros::Rate rr(loop_rate_);
   while (!label_client_.getState().isDone() and ros::ok() and !segment_preempted) {
     segment_preempted = segment_server_.isPreemptRequested();
     rr.sleep();
@@ -102,7 +125,7 @@ BBoxFinalState Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& i
     ROS_INFO("grabcut3d_segmentation - preempt requested");
     //request preempt 
     label_client_.cancelGoal();
-    label_client_.waitForResult(ros::Duration(15.0));
+    label_client_.waitForResult(ros::Duration(preempt_wait_));
     label_state = PREEMPTED;
   }
   else {
@@ -161,7 +184,7 @@ BBoxFinalState Grabcut3dSegmentation::getBoundingBox(const shared_autonomy_msgs:
     ROS_INFO("grabcut3d_segmentation - preempt requested");
     //request preempt 
     bb_client_.cancelGoal();
-    bb_client_.waitForResult(ros::Duration(15.0));
+    bb_client_.waitForResult(ros::Duration(preempt_wait_));
     bb_state = PREEMPTED;
   }
   else {
@@ -219,7 +242,7 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const shared_autonomy_msgs::Segmen
   cv::Mat bgd_model;
   cv::Mat fgd_model;
 
-  grabCut3D(rgb_image, rgb_image, mask, rect, bgd_model, fgd_model, 5, cv::GC_INIT_WITH_RECT);
+  grabCut3D(rgb_image, rgb_image, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
 
   //cv::Point p1 = cv::Point(min_col, min_row);
   //cv::Point p2 = cv::Point(max_col, max_row);
@@ -236,7 +259,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   ROS_INFO("grabcut3d_segmentation::segmentExecuteCB called");
   // Check if HMI server is up; if not, we can't do segmentation
   if(!bb_client_.isServerConnected()) {
-    bool bb_ready = bb_client_.waitForServer(ros::Duration(15.0));
+    bool bb_ready = bb_client_.waitForServer(ros::Duration(connect_wait_));
     if(!bb_ready) {
       segment_server_.setAborted();
       ROS_WARN("grabcut3dsegmentation could not execute segmentation - HMI bounding box not connected!");
@@ -244,7 +267,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
     }
   }
   if(!label_client_.isServerConnected()) {
-    bool label_ready = label_client_.waitForServer(ros::Duration(15.0));
+    bool label_ready = label_client_.waitForServer(ros::Duration(connect_wait_));
     if(!label_ready) {
       segment_server_.setAborted();
       ROS_WARN("grabcut3dsegmentation could not execute segmentation - HMI pixel labeller not connected!");
@@ -282,7 +305,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   // Display resulting mask 
   cv_bridge::CvImage mask_msg;
   mask_msg.header.stamp = ros::Time::now();
-  mask_msg.header.frame_id = "base_link";
+  mask_msg.header.frame_id = segment_goal->image.header.frame_id;
   mask_msg.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
   mask_msg.image = mask;
   sensor_msgs::Image mask_img;// = sensor_msgs::Image();
@@ -304,7 +327,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
 
   cv_bridge::CvImage out_msg;
   out_msg.header.stamp = ros::Time::now();
-  out_msg.header.frame_id = "base_link";
+  out_msg.header.frame_id = segment_goal->image.header.frame_id;
   out_msg.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
   out_msg.image = mask;
   sensor_msgs::Image tmp_img;// = sensor_msgs::Image();
