@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import actionlib
-from cv_bridge import CvBridge
+
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 import rospy
 
@@ -32,8 +32,8 @@ class IM_HMI():
         self.label_active = False
 
         self.im_server = InteractiveMarkerServer("im_gui")
-        self.cv_bridge = CvBridge()
 
+        
     def label_done_callback(self):
         self.label_active = False
 
@@ -42,12 +42,9 @@ class IM_HMI():
     def execute_label_pixel(self, goal):
         rospy.loginfo("execute_label_pixel called")
 
-        cv_im = self.cv_bridge.imgmsg_to_cv(goal.image)
-        cv_mask = self.cv_bridge.imgmsg_to_cv(goal.mask)
-
         self.label_active = True
         mylabeller = EditPixelLabels(self.label_done_callback, self.im_server, 
-                                     cv_im, cv_mask)
+                                     goal.image, goal.mask)
 
         rr = rospy.Rate(10)
         while (self.label_active and 
@@ -76,11 +73,8 @@ class IM_HMI():
     def execute_bounding_box(self, goal):
         rospy.loginfo("execute_bounding_box called")
 
-        # convert goal image to opencv
-        cv_im = self.cv_bridge.imgmsg_to_cv(goal.image)
-
         self.bb_active = True
-        mybb = BoundingBox(self.bb_done_callback, self.im_server, cv_im)
+        mybb = BoundingBox(self.bb_done_callback, self.im_server, goal.image)
 
         rr = rospy.Rate(10)
         while (self.bb_active and (not self.bb_server.is_preempt_requested()) and 

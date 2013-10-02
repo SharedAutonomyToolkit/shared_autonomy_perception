@@ -1,5 +1,6 @@
 from math import pi
 
+from cv_bridge import CvBridge
 from geometry_msgs.msg import Point
 import im_utils
 from interactive_markers.interactive_marker_server import *
@@ -11,8 +12,12 @@ class BoundingBox():
     def __init__(self, hmi_callback, im_server, image):
         self.hmi_callback = hmi_callback
         self.im_server = im_server
-        self.image = image
+        # convert goal image to opencv
+        self.frame_id = image.header.frame_id
+        cv_bridge = CvBridge()
+        self.image = cv_bridge.imgmsg_to_cv(image)
 
+        rospy.loginfo("created BoundingBox with frame %s" % image.header.frame_id)
         # starting coordinates of ROI
         self.x1 = 1.0
         self.x2 = 2.0 # needs to be set as float here ... 
@@ -64,7 +69,7 @@ class BoundingBox():
         image_control.markers.append(image_marker)
 
         image_im = InteractiveMarker()
-        image_im.header.frame_id = "camera_link"
+        image_im.header.frame_id = self.frame_id
         image_im.name = "CameraIM"
         image_im.description = ""
         image_im.controls.append(image_control)
@@ -96,7 +101,7 @@ class BoundingBox():
 
         # creating marker & control for roi; class var b/c other callbacks modify it
         self.roi_im = InteractiveMarker()
-        self.roi_im.header.frame_id = "/camera_link"
+        self.roi_im.header.frame_id = self.frame_id
         self.roi_im.name = "ROI"
         self.roi_im.description = ""
         self.roi_im.pose.position.x = (self.x1 + self.x2) / 2
@@ -134,7 +139,7 @@ class BoundingBox():
         #self.roi_im.controls.append(tl_control)
 
         tl_im = InteractiveMarker()
-        tl_im.header.frame_id = "/camera_link"
+        tl_im.header.frame_id = self.frame_id
         tl_im.name = "tl"
         tl_im.description = ""
         tl_im.pose.position.x = self.x1
@@ -155,7 +160,7 @@ class BoundingBox():
         br_control.interaction_mode = InteractiveMarkerControl.MOVE_PLANE
 
         br_im = InteractiveMarker()
-        br_im.header.frame_id = "/camera_link"
+        br_im.header.frame_id = self.frame_id
         br_im.name = "br"
         br_im.description = ""
         br_im.pose.position.x = self.x2
@@ -180,7 +185,7 @@ class BoundingBox():
         menu_control.markers.append(menu_marker)
 
         menu_im = InteractiveMarker()
-        menu_im.header.frame_id = "/camera_link"
+        menu_im.header.frame_id = self.frame_id
         menu_im.pose.position.y = -3.0
         menu_im.scale = 1
         menu_im.name = "acceptROI"
@@ -190,6 +195,7 @@ class BoundingBox():
         menu_handler.apply(self.im_server, "ROI")
 
         self.im_server.applyChanges()
+        rospy.loginfo("done with add_bounding_box")
 
     def acceptCB(self, feedback):
         (row1, col1) = im_utils.pixelsFromMeters(self.x1, self.y1, self.ppm, self.image.rows, self.image.cols)

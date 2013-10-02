@@ -1,5 +1,6 @@
 from math import pi
 
+from cv_bridge import CvBridge
 import im_utils
 from geometry_msgs.msg import Point
 from interactive_markers.interactive_marker_server import *
@@ -13,8 +14,11 @@ class EditPixelLabels():
     def __init__(self, hmi_callback, im_server, image, mask):
         self.hmi_callback = hmi_callback
         self.im_server = im_server
-        self.image = image
-        self.mask = mask
+
+        self.frame_id = image.header.frame_id
+        cv_bridge = CvBridge()
+        self.image = cv_bridge.imgmsg_to_cv(image)
+        self.mask = cv_bridge.imgmsg_to_cv(mask)
 
         # pixels-per-m for published markers
         self.ppm = 100
@@ -72,7 +76,7 @@ class EditPixelLabels():
         image_control.markers.append(image_marker)
 
         image_im = InteractiveMarker()
-        image_im.header.frame_id = "camera_link"
+        image_im.header.frame_id = self.frame_id
         image_im.name = "LabeledImage"
         image_im.description = ""
         image_im.controls.append(image_control)
@@ -114,7 +118,7 @@ class EditPixelLabels():
         button_control.markers.append(button_marker)
 
         button_im = InteractiveMarker()
-        button_im.header.frame_id = "camera_link"
+        button_im.header.frame_id = self.frame_id
         button_im.name = "DoneLabeling"
         button_im.description = ""
         button_im.controls.append(button_control)

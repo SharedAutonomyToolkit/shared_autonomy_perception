@@ -46,9 +46,10 @@ public:
 };
 
 // TODO: Is this good practice to init everything like this?
-// TODO: parameterize the camera that we're listening to!!
+
 KinectAssembler::KinectAssembler() : 
   root_nh_(""), priv_nh_("~"),
+  // We expect these to be remapped in the launch file, using the same arg as openni_launch. 
   image_sub_(root_nh_, "camera/rgb/image_color", 1),
   depth_sub_(root_nh_, "camera/depth_registered/image", 1),
   info_sub_(root_nh_, "camera/depth_registered/camera_info", 1),
@@ -58,7 +59,7 @@ KinectAssembler::KinectAssembler() :
   sync_.registerCallback(boost::bind(&KinectAssembler::approxCB, this, _1, _2, _3, _4));
 
   // TODO: rgbd_assembler had something like "resolveName" here ...
-  kinect_srv_ = root_nh_.advertiseService("assemble_kinect", &KinectAssembler::serviceCB, this);
+  kinect_srv_ = root_nh_.advertiseService("camera/assemble_kinect", &KinectAssembler::serviceCB, this);
   has_data_ = false;
   ROS_INFO("KinectAssembler started");
 
