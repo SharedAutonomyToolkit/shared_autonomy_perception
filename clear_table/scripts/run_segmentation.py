@@ -50,8 +50,7 @@ class RunSegmentation():
 
         # this callback will set the member variable mask
         self.mask = None
-        self.segment_client.send_goal(goal, done_cb=self.segmentDoneCB, 
-                                      feedback_cb=self.segmentFeedbackCB)
+        self.segment_client.send_goal(goal, done_cb=self.segmentDoneCB)
         self.segment_client.wait_for_result()
         
         return self.mask
@@ -81,12 +80,6 @@ class RunSegmentation():
     def segmentDoneCB(self, state, result):
         print "segmentation done"
         self.mask = result.mask
-        
-    def segmentFeedbackCB(self, feedback):
-        print "feedback received"
-        print feedback
-    
-
 
 if __name__ == "__main__":
     rospy.init_node('run_segmentation')

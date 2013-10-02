@@ -28,7 +28,6 @@ protected:
   actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::EditPixelAction> label_client_;
   std::string action_name_;
-  shared_autonomy_msgs::SegmentFeedback feedback_;
   shared_autonomy_msgs::SegmentResult segmentation_result_;
 
   BBoxFinalState getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask);

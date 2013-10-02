@@ -54,6 +54,7 @@ KinectAssembler::KinectAssembler() :
   depth_sub_(root_nh_, "camera/depth_registered/image", 1),
   info_sub_(root_nh_, "camera/depth_registered/camera_info", 1),
   points_sub_(root_nh_, "camera/depth_registered/points", 1),
+  // 10 is queue size for the synching approach
   sync_(KinectSyncPolicy(10), image_sub_, depth_sub_, info_sub_, points_sub_) {
 
   sync_.registerCallback(boost::bind(&KinectAssembler::approxCB, this, _1, _2, _3, _4));
