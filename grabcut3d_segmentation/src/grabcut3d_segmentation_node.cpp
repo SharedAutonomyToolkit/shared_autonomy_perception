@@ -52,6 +52,7 @@ Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::stri
   label_client_(label_name, true),
   action_name_(segment_name) 
 {
+
   ROS_INFO("grabcut3d_segmentation initialized");
   segment_server_.start();
 
@@ -302,8 +303,6 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
     return;
   }
 
-
-
   cv_bridge::CvImage out_msg;
   out_msg.header.stamp = ros::Time::now();
   out_msg.header.frame_id = "base_link";
@@ -322,7 +321,9 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "grabcut3d_segmentation_node");
-  Grabcut3dSegmentation segmenter(ros::this_node::getName(), "/get_bounding_box", "/edit_pixel_labels");
+
+  Grabcut3dSegmentation segmenter("segment_service", "bbox_service", "pixel_service");
+
   ros::spin();
   return 0;
 }

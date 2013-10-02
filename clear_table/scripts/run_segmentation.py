@@ -24,7 +24,7 @@ class RunSegmentation():
     def __init__(self):
         self.kinect_client = rospy.ServiceProxy('assemble_kinect', KinectAssembly)
         self.point_publisher = rospy.Publisher('segmented_points', PointCloud2)
-        self.segment_client = actionlib.SimpleActionClient('/grabcut3d_segmentation_node', SegmentAction)
+        self.segment_client = actionlib.SimpleActionClient('segment_service', SegmentAction)
 
         self.mask = None
 

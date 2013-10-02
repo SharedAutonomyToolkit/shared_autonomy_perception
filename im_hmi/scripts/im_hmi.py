@@ -16,7 +16,7 @@ from edit_pixel_labels import EditPixelLabels
 class IM_HMI():
     def __init__(self):
         # TODO: make topic a parameter
-        self.bb_server = actionlib.SimpleActionServer('/get_bounding_box', 
+        self.bb_server = actionlib.SimpleActionServer('bbox_service', 
                                                       BoundingBoxAction, 
                                                       execute_cb=self.execute_bounding_box,
                                                       auto_start=False)
@@ -24,7 +24,7 @@ class IM_HMI():
         self.bb_active = False
 
 
-        self.label_server = actionlib.SimpleActionServer('/edit_pixel_labels',
+        self.label_server = actionlib.SimpleActionServer('pixel_service',
                                                          EditPixelAction,
                                                          execute_cb = self.execute_label_pixel,
                                                          auto_start=False)
