@@ -55,6 +55,7 @@
   <node name="run_segmentation" pkg="clear_table" type="run_segmentation.py">
     <remap from="assemble_kinect" to="$(arg kinect_name)/assemble_kinect"/>
     <remap from="segment_service" to="$(arg segment_service)"/>
+    <param name="data_wait" value="10.0"/>
   </node>
 
 </launch>

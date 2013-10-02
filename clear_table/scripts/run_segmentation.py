@@ -87,12 +87,16 @@ if __name__ == "__main__":
     mysegmenter = RunSegmentation()
     mysegmenter.connect()
 
+    data_wait = rospy.get_param("~data_wait", 5.0)
+    rospy.sleep(1.0)
+    rospy.loginfo("data_wait: %0.2f" % data_wait)
+
     while not rospy.is_shutdown():
 
         data = mysegmenter.get_data()
         if data is None:
             rospy.loginfo("run_segmentation - no data available! sleeping for 5secs")
-            rospy.sleep(5.0)
+            rospy.sleep(data_wait)
             continue
 
         print "got image data"
