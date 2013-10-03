@@ -34,7 +34,7 @@ protected:
 		      int *min_col, int *max_col, int *min_row, int *max_row);
   void maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
   void grabcutMaskFromBB(const sensor_msgs::Image& image, cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
-  void grabcutMaskFromPixels(cv_bridge::CvImage &mask_bridge,
+  void grabcutMaskFromPixels(const sensor_msgs::Image& image, cv_bridge::CvImage &mask_bridge,
 			     std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
 			     std::vector<shared_autonomy_msgs::Pixel> background_pixels);
   bool matFromImageMessage(const sensor_msgs::Image& image, cv::Mat& mat);
@@ -260,7 +260,7 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_imag
 
 // updates the input mask with new classification based on input pixel labels
 // sets 
-void Grabcut3dSegmentation::grabcutMaskFromPixels(cv_bridge::CvImage &mask_bridge,
+void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_image, cv_bridge::CvImage &mask_bridge,
 						  std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
 						  std::vector<shared_autonomy_msgs::Pixel> background_pixels) {
   // TODO: make this a parameter
@@ -274,9 +274,17 @@ void Grabcut3dSegmentation::grabcutMaskFromPixels(cv_bridge::CvImage &mask_bridg
     cv::Point pp = cv::Point((*it).u, (*it).v);
     cv::circle(mask_bridge.image, pp, radius, cv::GC_BGD, CV_FILLED);
   }
-  // iterate over foreground pixels
-  // convert to cv point
-  // add circle to mask radius, w/ value cv::GC_BGD or cv::GC_FGD
+
+  // we're initializing from rect, so fill it in w/ input bounds
+  cv::Rect rect;
+
+  //grabcut3d will build its own models
+  cv::Mat bgd_model;
+  cv::Mat fgd_model;
+
+  cv::Mat rgb_image;
+  matFromImageMessage(ros_image, rgb_image);
+  grabCut3D(rgb_image, rgb_image, mask_bridge.image, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_MASK);
 
 }
 
@@ -367,11 +375,10 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   }
   while (!(foreground_pixels.empty() and background_pixels.empty())) {
     ROS_INFO("looping in pixel feedback. sizes: %d (fgd), %d (bdg)", foreground_pixels.size(), background_pixels.size());
-    grabcutMaskFromPixels(mask_bridge, foreground_pixels, background_pixels);
 
-    //TODO: rerun segmentation!
-
+    grabcutMaskFromPixels(segment_goal->image, mask_bridge, foreground_pixels, background_pixels);
     mask_bridge.toImageMsg(mask_img);
+
     label_succeeded = getPixelLabels(segment_goal->image, mask_img, foreground_pixels, background_pixels);
     if (!label_succeeded) {
       return;

@@ -55,20 +55,24 @@ class EditPixelLabels():
             for row in xrange(0, self.image.rows, 3):
                 # sinking it a bit s.t. the Interactive Markers are easier to grab
                 (xx, yy) = im_utils.metersFromPixels(row, col, self.ppm, self.image.rows, self.image.cols)
-                pt = Point(xx, yy, -0.05)
-                image_marker.points.append(pt)
+
+
 
                 mask_val = self.mask[row,col]
                 (red, green, blue) = im_utils.rosFromCVbridgeColor(self.image[row,col])
                 # TODO: these are magic numbers from opencv, indicating forground/probable foreground
                 # (in OpenCV, they're cv::GC_FGC cf::GC_PR_FGD)
                 if (mask_val == 1) or (mask_val == 3):
+                    pt = Point(xx, yy, 0.0)
                     cc = ColorRGBA(red, green, blue, 1.0)
                 else:
+                    # putting this one literally in the background
+                    pt = Point(xx, yy, -0.5)
                     grey = im_utils.greyFromRGB(red, green, blue)
                     # int is required in order to not be random shades! 0.5 makes it lighter                
-                    grey = int(0.5*grey)
+                    grey = max(int(0.5*grey),1)
                     cc = ColorRGBA(grey, grey, grey, 0.5)
+                image_marker.points.append(pt)
                 image_marker.colors.append(cc)
 
         image_control = InteractiveMarkerControl()
