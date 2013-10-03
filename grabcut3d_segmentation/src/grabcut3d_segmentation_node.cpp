@@ -19,16 +19,16 @@ protected:
   actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::EditPixelAction> label_client_;
 
-  shared_autonomy_msgs::SegmentResult segmentation_result_;
-
   bool getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask,
 		      std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
 		      std::vector<shared_autonomy_msgs::Pixel> &background_pixels);
   bool getBoundingBox(const sensor_msgs::Image& image, 
 		      int *min_col, int *max_col, int *min_row, int *max_row);
   void maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
-  void grabcutMaskFromBB(const sensor_msgs::Image& image, cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
-  void grabcutMaskFromPixels(const sensor_msgs::Image& image, cv_bridge::CvImage &mask_bridge,
+  void grabcutMaskFromBB(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
+			 cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
+  void grabcutMaskFromPixels(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
+			     cv_bridge::CvImage &mask_bridge,
 			     std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
 			     std::vector<shared_autonomy_msgs::Pixel> background_pixels);
   bool matFromImageMessage(const sensor_msgs::Image& image, cv::Mat& mat);
@@ -203,43 +203,51 @@ bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_
   cv_bridge::CvImagePtr cv_ptr;
   try {
     cv_ptr = cv_bridge::toCvCopy(image_msg);
+    ROS_INFO("DEPTH encoding: %s", cv_ptr->encoding.c_str());
   }
   catch (cv_bridge::Exception& e) {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return false;
   }
-  image = cv_ptr->image;
+
+  // handling depth images, and manually converting them, as described in:
+  // http://answers.ros.org/question/10222/openni_camera-depth-image-opencv/
+  // TODO: bounds checking on the conversion + parameterize it ... 
+  // will be 256 steps between min and max range ... so this determines resolution
+  double min_range = 0.0;
+  double max_range = 2.5;
+  char depth;
+  if(cv_ptr->encoding == "32FC1") {
+    //    cv::Mat img(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
+    image = cv::Mat(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
+    for(int i = 0; i < cv_ptr->image.rows; i++)
+    {
+        float* Di = cv_ptr->image.ptr<float>(i);
+        char* Ii = image.ptr<char>(i);
+        for(int j = 0; j < cv_ptr->image.cols; j++)
+        {   
+            Ii[j] = (char) (255*((Di[j]-min_range)/(max_range-min_range)));
+        }   
+    }
+  }
+  else {
+    image = cv_ptr->image;
+  }
   return true;
 }
-/**
-bool Grabcut3dSegmentation::imageMessageFromMat(sensor_msgs::Image& ros_image, const cv::Mat& mat_image) {
-  cv_bridge::CvImage bridge_image;
-  bridge_image.header.stamp = ros::Time::now();
-  bridge_image.header.frame_id = segment_goal->image.header.frame_id;
-  bridge_image.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
-  bridge_image.image = mat_image;
-  try {
-    bridge_image.toImageMsg(ros_image);
-  }
-  catch (cv_bridge::Exception& e) {
-    ROS_ERROR("cv_bridge exception: %s", e.what());
-    return false;
-  }
-  return true;
-}
-**/
 
 // fill mask in w/ result from calling grabcut_3d w/ bounding box
-void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_image, 
+void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_image, const sensor_msgs::Image& ros_depth, 
 					      cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
 
-  cv::Mat rgb_image;
-  matFromImageMessage(ros_image, rgb_image);
-  cv::Mat depth_image;
+  cv::Mat mat_image;
+  matFromImageMessage(ros_image, mat_image);
+  cv::Mat mat_depth;
   // TODO: this causes the error message:
   // [ERROR] [1380575220.208802077]: cv_bridge exception: [32FC1] is not a color format. but [bgr8] is. The conversion does not make sense
-  //matFromImageMessage(segment_goal->depth, depth_image);
+  matFromImageMessage(ros_depth, mat_depth);
 
+  
   // we're initializing from rect, so fill it in w/ input bounds
   cv::Rect rect = cv::Rect(min_col, min_row, max_col-min_col, max_row-min_row); 
 
@@ -248,12 +256,13 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_imag
   cv::Mat fgd_model;
   //TODO: does this init as probable or forced for things outside of the rectangle?
 
-  grabCut3D(rgb_image, rgb_image, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
+  grabCut3D(mat_image, mat_depth, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
 }
 
 // updates the input mask with new classification based on input pixel labels
 // sets 
-void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_image, cv_bridge::CvImage &mask_bridge,
+void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_image, const sensor_msgs::Image& ros_depth, 
+						  cv_bridge::CvImage &mask_bridge,
 						  std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
 						  std::vector<shared_autonomy_msgs::Pixel> background_pixels) {
   // TODO: make this a parameter
@@ -275,9 +284,11 @@ void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_
   cv::Mat bgd_model;
   cv::Mat fgd_model;
 
-  cv::Mat rgb_image;
-  matFromImageMessage(ros_image, rgb_image);
-  grabCut3D(rgb_image, rgb_image, mask_bridge.image, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_MASK);
+  cv::Mat mat_image;
+  matFromImageMessage(ros_image, mat_image);
+  cv::Mat mat_depth;
+  matFromImageMessage(ros_depth, mat_depth);
+  grabCut3D(mat_image, mat_depth, mask_bridge.image, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_MASK);
 
 }
 
@@ -346,7 +357,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   cv::Mat mask_mat = cv::Mat::zeros(segment_goal->image.height, segment_goal->image.width, CV_8UC1);
   cv_bridge::CvImage mask_bridge(segment_goal->image.header, "mono8", mask_mat);
   //maskFromBB(mask, min_col, max_col, min_row, max_row);
-  grabcutMaskFromBB(segment_goal->image, mask_bridge.image, min_col, max_col, min_row, max_row);
+  grabcutMaskFromBB(segment_goal->image, segment_goal->depth, mask_bridge.image, min_col, max_col, min_row, max_row);
   ROS_INFO("rectangle added to cv::Mat");
 
   // TODO: this is a mess. where do we use the ROS message types, and where do we use the cv?
@@ -367,7 +378,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
     return;
   }
   while (!(foreground_pixels.empty() and background_pixels.empty())) {
-    grabcutMaskFromPixels(segment_goal->image, mask_bridge, foreground_pixels, background_pixels);
+    grabcutMaskFromPixels(segment_goal->image, segment_goal->depth, mask_bridge, foreground_pixels, background_pixels);
     mask_bridge.toImageMsg(mask_img);
     label_succeeded = getPixelLabels(segment_goal->image, mask_img, foreground_pixels, background_pixels);
     if (!label_succeeded) {
@@ -375,12 +386,12 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
     }
   }
 
-  // update image message mask
-  mask_bridge.toImageMsg(mask_img);
-
   // return mask (work w/ openCV functions, then convert at the last minute?)
-  segmentation_result_.mask = mask_img;
-  segment_server_.setSucceeded(segmentation_result_);
+  shared_autonomy_msgs::SegmentResult segmentation_result;
+  mask_bridge.toImageMsg(mask_img);
+  segmentation_result.mask = mask_img;
+  segment_server_.setSucceeded(segmentation_result);
+
 }
 
 int main(int argc, char** argv) {
