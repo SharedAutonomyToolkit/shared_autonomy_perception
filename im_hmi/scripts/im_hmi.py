@@ -40,8 +40,6 @@ class IM_HMI():
     # TODO: There's a lot of overlap between this and execute_bounding_box ...
     #       any way to get rid of it?
     def execute_label_pixel(self, goal):
-        rospy.loginfo("execute_label_pixel called")
-
         self.label_active = True
         mylabeller = EditPixelLabels(self.label_done_callback, self.im_server, 
                                      goal.image, goal.mask)
@@ -58,21 +56,15 @@ class IM_HMI():
         elif rospy.is_shutdown():
             self.label_server.set_aborted()
         else:
-            rospy.loginfo("foreground: %r" % mylabeller.get_foreground())
-            rospy.loginfo("background: %r" % mylabeller.get_background())
             resp = EditPixelResult()
             resp.fg = mylabeller.get_foreground()
             resp.bg = mylabeller.get_background()
             self.label_server.set_succeeded(resp)
-        rospy.loginfo("returning from execute_label_pixel")
-
 
     def bb_done_callback(self):
         self.bb_active = False
 
     def execute_bounding_box(self, goal):
-        rospy.loginfo("execute_bounding_box called")
-
         self.bb_active = True
         mybb = BoundingBox(self.bb_done_callback, self.im_server, goal.image)
 
@@ -96,7 +88,6 @@ class IM_HMI():
                 resp.min_col.data = col1
                 resp.max_col.data = col2
                 self.bb_server.set_succeeded(resp)
-        rospy.loginfo("exiting execute_bounding_box")
         
 if __name__ == "__main__":
     rospy.init_node("im_hmi")
