@@ -228,7 +228,7 @@ void GMM::calcInverseCovAndDeterm( int ci )
 Vec3f getDataTerm( const Mat& img, const Mat& depth_img, int row, int col )
 {
   const Vec3b& color = img.at<Vec3b>(row,col);
-  //const Vec3b& depth = depth_img.at<Vec3b>(row,col);
+  const Vec3b& depth = depth_img.at<Vec3b>(row,col);
   //return Vec3f(color[0],(color[1]+color[2])/2.0,BETA*depth[0]);
   return Vec3f(color[0],color[1],color[2]);
 }
@@ -236,7 +236,7 @@ Vec3f getDataTerm( const Mat& img, const Mat& depth_img, int row, int col )
 Vec3f getDataTerm( const Mat& img, const Mat& depth_img, Point& p)
 {
   const Vec3b& color = img.at<Vec3b>(p);
-  //const Vec3b& depth = depth_img.at<Vec3b>(p);
+  const Vec3b& depth = depth_img.at<Vec3b>(p);
   //return Vec3f(color[0],(color[1]+color[2])/2.0,BETA*depth[0]);
   return Vec3f(color[0],color[1],color[2]);
 }
@@ -562,12 +562,12 @@ void cv::grabCut3D( const Mat& img, const Mat& depth_img, Mat& mask, Rect rect,
     if( img.empty() )
         CV_Error( CV_StsBadArg, "image is empty" );
     if( img.type() != CV_8UC3 )
-        CV_Error( CV_StsBadArg, "image mush have CV_8UC3 type" );
+        CV_Error( CV_StsBadArg, "image must have CV_8UC3 type" );
 
     if( depth_img.empty() )
         CV_Error( CV_StsBadArg, "depth_img is empty" );
-    if( depth_img.type() != CV_8UC3 )
-        CV_Error( CV_StsBadArg, "depth_img mush have CV_8UC3 type" );
+    if( depth_img.type() != CV_8UC3  and depth_img.type() != CV_8UC1)
+        CV_Error( CV_StsBadArg, "depth_img must have CV_8UC3 or CV_8UC1 type" );
 
     GMM bgdGMM( bgdModel ), fgdGMM( fgdModel );
     Mat compIdxs( img.size(), CV_32SC1 );
