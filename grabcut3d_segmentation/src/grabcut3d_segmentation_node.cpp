@@ -10,12 +10,6 @@
 #include <shared_autonomy_msgs/Pixel.h>
 #include <shared_autonomy_msgs/SegmentAction.h>
 
-enum BBoxFinalState {
-  SUCCEEDED,
-  PREEMPTED,
-  FAILED
-};
-
 class Grabcut3dSegmentation {
 
 protected:
