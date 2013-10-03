@@ -18,7 +18,7 @@ protected:
   actionlib::SimpleActionServer<shared_autonomy_msgs::SegmentAction> segment_server_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::EditPixelAction> label_client_;
-  std::string action_name_;
+
   shared_autonomy_msgs::SegmentResult segmentation_result_;
 
   bool getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask,
@@ -53,8 +53,7 @@ Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::stri
   root_nh_(""), priv_nh_("~"),
   segment_server_(root_nh_, segment_name, boost::bind(&Grabcut3dSegmentation::segmentExecuteCB, this, _1), false), 
   bb_client_(bb_name, true), 
-  label_client_(label_name, true),
-  action_name_(segment_name) 
+  label_client_(label_name, true)
 {
   // initialize all parameters
   priv_nh_.param<double>(std::string("loop_rate"), loop_rate_, 10.0);
@@ -124,7 +123,7 @@ bool Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, cons
   }
   else {
     // Only way to get here should be if !ros::ok(), in which case we also quit
-    ROS_INFO("%s quitting b/c ros::ok() false.", action_name_.c_str());
+    ROS_INFO("quitting b/c ros::ok() false.");
     segment_server_.setAborted();
     return false;
   }
@@ -179,7 +178,7 @@ bool Grabcut3dSegmentation::getBoundingBox(const sensor_msgs::Image& image,
   }
   else {
     // Only way to get here should be if !ros::ok(), in which case we also quit
-    ROS_INFO("%s quitting b/c ros::ok() false.", action_name_.c_str());
+    ROS_INFO("quitting b/c ros::ok() false.");
     segment_server_.setAborted();
     return false;
   }
@@ -368,11 +367,8 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
     return;
   }
   while (!(foreground_pixels.empty() and background_pixels.empty())) {
-    ROS_INFO("looping in pixel feedback. sizes: %d (fgd), %d (bdg)", foreground_pixels.size(), background_pixels.size());
-
     grabcutMaskFromPixels(segment_goal->image, mask_bridge, foreground_pixels, background_pixels);
     mask_bridge.toImageMsg(mask_img);
-
     label_succeeded = getPixelLabels(segment_goal->image, mask_img, foreground_pixels, background_pixels);
     if (!label_succeeded) {
       return;
@@ -385,7 +381,6 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   // return mask (work w/ openCV functions, then convert at the last minute?)
   segmentation_result_.mask = mask_img;
   segment_server_.setSucceeded(segmentation_result_);
-  ROS_INFO("%s succeeded.", action_name_.c_str());  
 }
 
 int main(int argc, char** argv) {
