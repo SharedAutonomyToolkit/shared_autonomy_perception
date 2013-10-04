@@ -40,6 +40,9 @@
     <param name="preempt_wait" value="10.0"/>
     <param name="connect_wait" value="60.0"/>
     <param name="grabcut_iters" value="10"/>
+    <param name="min_range" value="0.25"/>
+    <param name="max_range" value="3.0"/>
+    <param name="click_radius" value="20"/>
   </node>
   
   <!-- Implements the Interactive Marker server and all the actionlib services

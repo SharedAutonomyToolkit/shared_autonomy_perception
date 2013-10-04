@@ -40,6 +40,11 @@ protected:
   double preempt_wait_; // how long to give servers to cancel the goal
   double connect_wait_; // how long to wait when trying to initially connect
   int grabcut_iters_; // how many iterations to allow grabcut3D
+  double min_range_; // parameters for scaling depth image from 32FC1 -> 8UC1
+  double max_range_;
+  // TODO: This suggests to me that maybe we should have the radius on the GUI
+  // side of this, and take in an exact list of pixels, or a mask? 
+  int click_radius_; // how many pixels around a mouse click are set to fg/bg
 
 public:
   Grabcut3dSegmentation(std::string segment_name, std::string bb_name, std::string label_name);
@@ -59,8 +64,12 @@ Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::stri
   priv_nh_.param<double>(std::string("preempt_wait"), preempt_wait_, 15.0);
   priv_nh_.param<double>(std::string("connect_wait"), connect_wait_, 20.0);
   priv_nh_.param<int>(std::string("grabcut_iters"), grabcut_iters_, 5);
+  priv_nh_.param<double>(std::string("min_range"), min_range_, 0.0);
+  priv_nh_.param<double>(std::string("max_range"), max_range_, 2.5);
+  priv_nh_.param<int>(std::string("click_radius"), click_radius_, 5);
 
   ROS_INFO("grabcut3D segmentation initialized");
+
   segment_server_.start();
 
 }
@@ -211,12 +220,8 @@ bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_
 
   // handling depth images, and manually converting them, as described in:
   // http://answers.ros.org/question/10222/openni_camera-depth-image-opencv/
-  // TODO: bounds checking on the conversion + parameterize it ... 
-  // will be 256 steps between min and max range ... so this determines resolution
   // TODO: test that this image makes sense (publish it and listen on image_view?)
-  double min_range = 0.0;
-  double max_range = 2.5;
-  char depth;
+  double scaled_depth;
   if(cv_ptr->encoding == "32FC1") {
     image = cv::Mat(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
     for(int i = 0; i < cv_ptr->image.rows; i++)
@@ -225,7 +230,8 @@ bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_
         char* Ii = image.ptr<char>(i);
         for(int j = 0; j < cv_ptr->image.cols; j++)
         {   
-            Ii[j] = (char) (255*((Di[j]-min_range)/(max_range-min_range)));
+	  scaled_depth = std::min(1.0, std::max(0.0, (Di[j]-min_range_)/(max_range_-min_range_)));
+	  Ii[j] = (char) (255*scaled_depth);
         }   
     }
   }
@@ -262,15 +268,14 @@ void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_
 						  std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
 						  std::vector<shared_autonomy_msgs::Pixel> background_pixels) {
   // TODO: make this a parameter
-  int radius = 20;
   std::vector<shared_autonomy_msgs::Pixel>::iterator it;
   for(it = foreground_pixels.begin(); it != foreground_pixels.end(); it++) {
     cv::Point pp = cv::Point((*it).u, (*it).v);
-    cv::circle(mask_bridge.image, pp, radius, cv::GC_FGD, CV_FILLED);
+    cv::circle(mask_bridge.image, pp, click_radius_, cv::GC_FGD, CV_FILLED);
   }
   for(it = background_pixels.begin(); it != background_pixels.end(); it++) {
     cv::Point pp = cv::Point((*it).u, (*it).v);
-    cv::circle(mask_bridge.image, pp, radius, cv::GC_BGD, CV_FILLED);
+    cv::circle(mask_bridge.image, pp, click_radius_, cv::GC_BGD, CV_FILLED);
   }
 
   cv::Rect rect;
