@@ -32,7 +32,6 @@ protected:
 			     std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
 			     std::vector<shared_autonomy_msgs::Pixel> background_pixels);
   bool matFromImageMessage(const sensor_msgs::Image& image, cv::Mat& mat);
-  //bool imageMessageFromMat(sensor_msgs::Image& image, const cv::Mat& mat);
   
   bool checkHMIConnected();
 
@@ -214,11 +213,11 @@ bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_
   // http://answers.ros.org/question/10222/openni_camera-depth-image-opencv/
   // TODO: bounds checking on the conversion + parameterize it ... 
   // will be 256 steps between min and max range ... so this determines resolution
+  // TODO: test that this image makes sense (publish it and listen on image_view?)
   double min_range = 0.0;
   double max_range = 2.5;
   char depth;
   if(cv_ptr->encoding == "32FC1") {
-    //    cv::Mat img(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
     image = cv::Mat(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
     for(int i = 0; i < cv_ptr->image.rows; i++)
     {
@@ -243,10 +242,7 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_imag
   cv::Mat mat_image;
   matFromImageMessage(ros_image, mat_image);
   cv::Mat mat_depth;
-  // TODO: this causes the error message:
-  // [ERROR] [1380575220.208802077]: cv_bridge exception: [32FC1] is not a color format. but [bgr8] is. The conversion does not make sense
   matFromImageMessage(ros_depth, mat_depth);
-
   
   // we're initializing from rect, so fill it in w/ input bounds
   cv::Rect rect = cv::Rect(min_col, min_row, max_col-min_col, max_row-min_row); 
@@ -254,8 +250,8 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_imag
   //grabcut3d will build its own models
   cv::Mat bgd_model;
   cv::Mat fgd_model;
-  //TODO: does this init as probable or forced for things outside of the rectangle?
 
+  //TODO: does this init as probable or forced for things outside of the rectangle?
   grabCut3D(mat_image, mat_depth, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
 }
 
@@ -277,10 +273,7 @@ void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_
     cv::circle(mask_bridge.image, pp, radius, cv::GC_BGD, CV_FILLED);
   }
 
-  // we're initializing from rect, so fill it in w/ input bounds
   cv::Rect rect;
-
-  //grabcut3d will build its own models
   cv::Mat bgd_model;
   cv::Mat fgd_model;
 
@@ -288,6 +281,7 @@ void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_
   matFromImageMessage(ros_image, mat_image);
   cv::Mat mat_depth;
   matFromImageMessage(ros_depth, mat_depth);
+
   grabCut3D(mat_image, mat_depth, mask_bridge.image, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_MASK);
 
 }
@@ -319,21 +313,6 @@ bool Grabcut3dSegmentation::checkHMIConnected() {
   // * bbox bounds to mask
   // * obtain labels/acceptance
   // * update mask w/ labels
-
-
-  /** This compiles, not sure it's the right way to do it ..
-  // we use bridge_image and bridge_mask locally; convert back to ROS when necessary
-  // TODO: I'm struggling with when to use the Ptr or not...
-  cv_bridge::CvImagePtr bridge_image_ptr;
-  bridge_image_ptr = cv_bridge::toCvCopy(segment_goal->image);
-  cv_bridge::CvImage bridge_image(bridge_image_ptr->header, bridge_image_ptr->encoding, bridge_image_ptr->image);
-
-  // Set up mask that'll be used for the rest of the program to iterate on bg/fg
-  cv::Mat mask = cv::Mat::zeros(segment_goal->image.height, segment_goal->image.width, CV_8UC1);
-  ROS_INFO("created cv::Mat mask");
-  cv_bridge::CvImage bridge_mask(bridge_image_ptr->header, "mono8", mask);
-  **/
-
 
 //TODO: I kind of dislike how all the helper functions are the ones that actually handle
 // setting the actionlib server status, but it got too cumbersome to have it at the top level
