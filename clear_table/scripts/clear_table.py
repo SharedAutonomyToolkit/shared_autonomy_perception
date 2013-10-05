@@ -2,8 +2,6 @@
 
 import random
 
-import roslib; roslib.load_manifest('smach_experiments')
-
 import rospy
 
 import actionlib
