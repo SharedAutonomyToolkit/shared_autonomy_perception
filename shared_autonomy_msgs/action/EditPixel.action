@@ -1,0 +1,9 @@
+#goal 
+sensor_msgs/Image image
+sensor_msgs/Image mask
+---
+#result
+shared_autonomy_msgs/Pixel[] fg
+shared_autonomy_msgs/Pixel[] bg
+---
+#feedback

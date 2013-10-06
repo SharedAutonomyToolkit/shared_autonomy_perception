@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+
+<script type="text/javascript" src="http://cdn.robotwebtools.org/EventEmitter2/0.4.11/eventemitter2.js"> </script>
+
+<script type="text/javascript" src="http://cdn.robotwebtools.org/roslibjs/r5/roslib.min.js"></script>
+<!--
+-->
+
+<meta charset="utf-8"\>
+<script>
+
+// goals:
+// * text input
+// * button input
+// * subscribe to topic
+// * publish to topic 
+// * have button cause publishing
+// * services/action services
+// * I want emacs plugin for proprely syntax-highlighting mixed js and html
+// * print text to screen -> sarah says it's within web browser, and user can close it
+// * arrange elements more neatly
+
+function mycb() {
+
+    // this PUTS blah in the function call 
+    console.log("foo");
+    $("#textinput2").val("blah")
+
+}
+
+  function init() {
+
+
+      console.log("foo!");
+      initROS();
+
+      // $( means jquery. this does magic to associate to the idx
+      // this reads the value from the field
+      $("#test").click(function() {
+	  text_value = $("#textinput1").attr("value");
+	  console.log("test lambda:" + text_value);
+      });
+
+      $("#foo").click(mycb);
+
+
+
+  }
+
+function initROS() {
+    var ros = new ROSLIB.Ros({
+	url : 'ws://localhost:9090'
+    });
+    ros.on('error', function() {
+	alert('Lost communication with ROS.');
+    });
+
+    var pub_time = new ROSLIB.Topic({
+	ros : ros,
+	name : "/my_time",
+	messageType : 'std_msgs/String'
+    });
+
+    var foo = 1;
+    // send a message every xxx miliseconds
+    setInterval(function() {
+	var currentTime = new Date();
+	var hours=currentTime.getHours();
+	var minutes=currentTime.getMinutes();
+	var seconds=currentTime.getSeconds();
+	var str = "it is now: " + hours + ":" + minutes + ":" + seconds + "(" + foo + ")";
+	// does NOT work; doesn't convert to JSON!
+	//pub_time.publish(str);
+	var msg = new ROSLIB.Message({
+	    data : str
+	});
+	pub_time.publish(msg);
+	foo = foo+1;
+	console.log(str);
+    }, 1000);
+
+//////////////////
+
+    var listener = new ROSLIB.Topic({
+	ros : ros,
+	name : '/my_time',
+	messageType : 'std_msgs/String'
+    });
+
+    function listener_cb(message) {
+	console.log('received message: ' + message.data);
+
+    }
+    listener.subscribe(listener_cb);
+
+    console.log('after setInterval');
+
+}
+
+// tutorial on making script send ROS messages: 
+//* http://wiki.ros.org/roslibjs/Tutorials/BasicRosFunctionality 
+// nice ui examples:
+// * jqueryui.com
+// recommended for learning jquery by JS people:
+// * jqfundamentals.com
+// and a survey of JS 
+// * http://javascript.crockford.com/survey.html
+// recommended for the web chapters
+// * eloquentjavascript.net/contents.htlm
+
+</script>
+</head>
+
+<body onload="init()">
+  <div id="markers"></div>
+  <button type="button" id="test"> testing </button>
+  <button type="button" id="foo"> foo </button>
+    <!-- // box alone -->
+  <input type="text" id="textinput1">
+<!-- // labeled box (by default, after) -->
+  <input type="text" id="textinput2"> asdf </input>
+<!-- // labeled box w/ initial text -->
+  <input type="text" id="textinput3" value="foo"> asdf </input>
+</body>
+
+</html>
