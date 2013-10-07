@@ -23,7 +23,7 @@ protected:
 		      std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
 		      std::vector<shared_autonomy_msgs::Pixel> &background_pixels);
   bool getBoundingBox(const sensor_msgs::Image& image, 
-		      int *min_col, int *max_col, int *min_row, int *max_row);
+		      int &min_col, int &max_col, int &min_row, int &max_row);
   void maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
   void grabcutMaskFromBB(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
 			 cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
@@ -139,7 +139,7 @@ bool Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, cons
 
 
 bool Grabcut3dSegmentation::getBoundingBox(const sensor_msgs::Image& image, 
-					   int *min_col, int *max_col, int *min_row, int *max_row) {
+					   int &min_col, int &max_col, int &min_row, int &max_row) {
 
   ROS_INFO("grabcut3d_segmentation in getBoundingBox");
   bool segment_preempted = false;
@@ -164,10 +164,10 @@ bool Grabcut3dSegmentation::getBoundingBox(const sensor_msgs::Image& image,
     if(bb_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
       ROS_INFO("grabcut3d_segmentation's bbox client returned successfully");
       bb_result = *bb_client_.getResult();
-      *min_col = bb_result.min_col.data;
-      *max_col = bb_result.max_col.data;
-      *min_row = bb_result.min_row.data;
-      *max_row = bb_result.max_row.data;
+      min_col = bb_result.min_col.data;
+      max_col = bb_result.max_col.data;
+      min_row = bb_result.min_row.data;
+      max_row = bb_result.max_row.data;
       return true;
     }
     else { // preempted, aborted, rejected, etc. ...
@@ -332,7 +332,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
 
   // Get initial bounding box
   int min_col, max_col, min_row, max_row;
-  bool bb_succeeded = getBoundingBox(segment_goal->image, &min_col, &max_col, &min_row, &max_row);
+  bool bb_succeeded = getBoundingBox(segment_goal->image, min_col, max_col, min_row, max_row);
   if(!bb_succeeded) {
     return;
   }
