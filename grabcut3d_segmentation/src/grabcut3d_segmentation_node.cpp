@@ -22,7 +22,7 @@ protected:
   bool getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask,
 		      std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
 		      std::vector<shared_autonomy_msgs::Pixel> &background_pixels);
-  bool getBoundingBox(const sensor_msgs::Image& image, 
+  bool getBoundingBox(const cv_bridge::CvImage &image,
 		      int &min_col, int &max_col, int &min_row, int &max_row);
   void maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
   void grabcutMaskFromBB(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
@@ -32,7 +32,8 @@ protected:
 			     const std::vector<shared_autonomy_msgs::Pixel>& foreground_pixels,
 			     const std::vector<shared_autonomy_msgs::Pixel>& background_pixels);
   bool matFromImageMessage(const sensor_msgs::Image& image, cv::Mat& mat);
-  
+  bool bridgeFromDepth(const sensor_msgs::Image& depth_msg, cv_bridge::CvImage depth_bridge);
+  bool bridgeFromRGB(const sensor_msgs::Image& rgb_msg, cv_bridge::CvImage rgb_bridge);
   bool checkHMIConnected();
 
   // -------------------- parameters ------------------
@@ -137,16 +138,15 @@ bool Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, cons
   }
 }
 
-
-bool Grabcut3dSegmentation::getBoundingBox(const sensor_msgs::Image& image, 
-					   int &min_col, int &max_col, int &min_row, int &max_row) {
+bool Grabcut3dSegmentation::getBoundingBox(const cv_bridge::CvImage &image_bridge,
+                                           int &min_col, int &max_col, int &min_row, int &max_row) {
 
   ROS_INFO("grabcut3d_segmentation in getBoundingBox");
   bool segment_preempted = false;
 
   shared_autonomy_msgs::BoundingBoxGoal bb_goal;
   shared_autonomy_msgs::BoundingBoxResult bb_result;
-  bb_goal.image = image;
+  image_bridge.toImageMsg(bb_goal.image);
   bb_client_.sendGoal(bb_goal);
 
   ROS_INFO("grabcut3d_segmentation sent goal");
@@ -241,6 +241,54 @@ bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_
   return true;
 }
 
+bool Grabcut3dSegmentation::bridgeFromDepth(const sensor_msgs::Image& depth_msg, cv_bridge::CvImage depth_bridge) {
+  cv_bridge::CvImagePtr cv_ptr;
+  try {
+    cv_ptr = cv_bridge::toCvCopy(depth_msg);
+  }
+  catch (cv_bridge::Exception& e) {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    return false;
+  }
+
+  // handling depth images, and manually converting them, as described in:
+  // http://answers.ros.org/question/10222/openni_camera-depth-image-opencv/
+  // TODO: test that this image makes sense (publish it and listen on image_view?)
+  double scaled_depth;
+  if(cv_ptr->encoding != "32FC1") {
+    ROS_ERROR("Unexpected encoding from depth image!");
+    return false;
+  }
+  else {
+    depth_bridge.image = cv::Mat(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
+    for(int i = 0; i < cv_ptr->image.rows; i++) {
+      float* Di = cv_ptr->image.ptr<float>(i);
+      char* Ii = depth_bridge.image.ptr<char>(i);
+      for(int j = 0; j < cv_ptr->image.cols; j++) {
+        scaled_depth = std::min(1.0, std::max(0.0, (Di[j]-min_range_)/(max_range_-min_range_)));
+        Ii[j] = (char) (255*scaled_depth);
+      }   
+    }
+  }
+  return true;
+}
+
+
+bool Grabcut3dSegmentation::bridgeFromRGB(const sensor_msgs::Image& rgb_msg, cv_bridge::CvImage rgb_bridge) {
+  cv_bridge::CvImagePtr cv_ptr;
+  try {
+    cv_ptr = cv_bridge::toCvCopy(rgb_msg);
+  } 
+  catch (cv_bridge::Exception &e) {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    return false;
+  }
+  rgb_bridge.encoding = rgb_msg.encoding;
+  rgb_bridge.header = rgb_msg.header;
+  rgb_bridge.image = cv_ptr->image;
+  return true;
+}
+
 // fill mask in w/ result from calling grabcut_3d w/ bounding box
 void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_image, const sensor_msgs::Image& ros_depth, 
 					      cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
@@ -324,6 +372,17 @@ bool Grabcut3dSegmentation::checkHMIConnected() {
 void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal) {
   ROS_INFO("grabcut3d_segmentation::segmentExecuteCB called");
 
+  // local storage of data is in cv_bridge::CvImage format. 
+  // Conversions to ROS happen as close as possible to the callback/publish function
+  
+  cv::Mat rgb_mat;
+  matFromImageMessage(segment_goal->image, rgb_mat);
+  cv_bridge::CvImage rgb_bridge(segment_goal->image.header, segment_goal->image.encoding, rgb_mat);
+
+  cv_bridge::CvImage depth_bridge;
+  bridgeFromDepth(segment_goal->depth, depth_bridge);
+
+
   // Check if HMI server is up; if not, we can't do segmentation
   bool hmi_server_connected = checkHMIConnected();
   if(!hmi_server_connected) {
@@ -332,7 +391,8 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
 
   // Get initial bounding box
   int min_col, max_col, min_row, max_row;
-  bool bb_succeeded = getBoundingBox(segment_goal->image, min_col, max_col, min_row, max_row);
+  // this sets col/row values ...
+  bool bb_succeeded = getBoundingBox(rgb_bridge, min_col, max_col, min_row, max_row);
   if(!bb_succeeded) {
     return;
   }
