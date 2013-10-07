@@ -29,8 +29,8 @@ protected:
 			 cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
   void grabcutMaskFromPixels(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
 			     cv_bridge::CvImage &mask_bridge,
-			     std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
-			     std::vector<shared_autonomy_msgs::Pixel> background_pixels);
+			     const std::vector<shared_autonomy_msgs::Pixel>& foreground_pixels,
+			     const std::vector<shared_autonomy_msgs::Pixel>& background_pixels);
   bool matFromImageMessage(const sensor_msgs::Image& image, cv::Mat& mat);
   
   bool checkHMIConnected();
@@ -265,10 +265,10 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_imag
 // sets 
 void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_image, const sensor_msgs::Image& ros_depth, 
 						  cv_bridge::CvImage &mask_bridge,
-						  std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
-						  std::vector<shared_autonomy_msgs::Pixel> background_pixels) {
+						  const std::vector<shared_autonomy_msgs::Pixel>& foreground_pixels,
+						  const std::vector<shared_autonomy_msgs::Pixel>& background_pixels) {
   // TODO: make this a parameter
-  std::vector<shared_autonomy_msgs::Pixel>::iterator it;
+  std::vector<shared_autonomy_msgs::Pixel>::const_iterator it;
   for(it = foreground_pixels.begin(); it != foreground_pixels.end(); it++) {
     cv::Point pp = cv::Point((*it).u, (*it).v);
     cv::circle(mask_bridge.image, pp, click_radius_, cv::GC_FGD, CV_FILLED);
