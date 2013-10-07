@@ -23,12 +23,12 @@ protected:
 		      std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
 		      std::vector<shared_autonomy_msgs::Pixel> &background_pixels);
   bool getBoundingBox(const cv_bridge::CvImage &image,
-		      int &min_col, int &max_col, int &min_row, int &max_row);
+                      int &min_col, int &max_col, int &min_row, int &max_row);
   void maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
-  void grabcutMaskFromBB(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
-			 cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
+  void grabcutMaskFromBB(const cv_bridge::CvImage &rgb_bridge, const cv_bridge::CvImage &depth_bridge, 
+                         cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
   void grabcutMaskFromPixels(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
-			     cv_bridge::CvImage &mask_bridge,
+                             cv_bridge::CvImage &mask_bridge,
 			     const std::vector<shared_autonomy_msgs::Pixel>& foreground_pixels,
 			     const std::vector<shared_autonomy_msgs::Pixel>& background_pixels);
   bool matFromImageMessage(const sensor_msgs::Image& image, cv::Mat& mat);
@@ -290,13 +290,8 @@ bool Grabcut3dSegmentation::bridgeFromRGB(const sensor_msgs::Image& rgb_msg, cv_
 }
 
 // fill mask in w/ result from calling grabcut_3d w/ bounding box
-void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_image, const sensor_msgs::Image& ros_depth, 
+void Grabcut3dSegmentation::grabcutMaskFromBB(const cv_bridge::CvImage &rgb_bridge, const cv_bridge::CvImage &depth_bridge, 
 					      cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
-
-  cv::Mat mat_image;
-  matFromImageMessage(ros_image, mat_image);
-  cv::Mat mat_depth;
-  matFromImageMessage(ros_depth, mat_depth);
   
   // we're initializing from rect, so fill it in w/ input bounds
   cv::Rect rect = cv::Rect(min_col, min_row, max_col-min_col, max_row-min_row); 
@@ -306,7 +301,7 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_imag
   cv::Mat fgd_model;
 
   //TODO: does this init as probable or forced for things outside of the rectangle?
-  grabCut3D(mat_image, mat_depth, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
+  grabCut3D(rgb_bridge.image, depth_bridge.image, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
 }
 
 // updates the input mask with new classification based on input pixel labels
@@ -379,8 +374,10 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   matFromImageMessage(segment_goal->image, rgb_mat);
   cv_bridge::CvImage rgb_bridge(segment_goal->image.header, segment_goal->image.encoding, rgb_mat);
 
-  cv_bridge::CvImage depth_bridge;
-  bridgeFromDepth(segment_goal->depth, depth_bridge);
+  cv::Mat depth_mat;
+  matFromImageMessage(segment_goal->depth, depth_mat);
+  cv_bridge::CvImage depth_bridge(segment_goal->depth.header, "mono8", depth_mat);
+
 
 
   // Check if HMI server is up; if not, we can't do segmentation
@@ -401,7 +398,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   cv::Mat mask_mat = cv::Mat::zeros(segment_goal->image.height, segment_goal->image.width, CV_8UC1);
   cv_bridge::CvImage mask_bridge(segment_goal->image.header, "mono8", mask_mat);
   //maskFromBB(mask, min_col, max_col, min_row, max_row);
-  grabcutMaskFromBB(segment_goal->image, segment_goal->depth, mask_bridge.image, min_col, max_col, min_row, max_row);
+  grabcutMaskFromBB(rgb_bridge, depth_bridge, mask_bridge.image, min_col, max_col, min_row, max_row);
   ROS_INFO("rectangle added to cv::Mat");
 
   // TODO: this is a mess. where do we use the ROS message types, and where do we use the cv?
