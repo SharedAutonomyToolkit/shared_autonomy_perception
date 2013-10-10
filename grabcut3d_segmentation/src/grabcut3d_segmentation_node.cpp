@@ -19,20 +19,20 @@ protected:
   actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::EditPixelAction> label_client_;
 
-  bool getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask,
-		      std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
-		      std::vector<shared_autonomy_msgs::Pixel> &background_pixels);
-  bool getBoundingBox(const sensor_msgs::Image& image, 
-		      int *min_col, int *max_col, int *min_row, int *max_row);
-  void maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
-  void grabcutMaskFromBB(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
-			 cv::Mat &mask, int min_col, int max_col, int min_row, int max_row);
-  void grabcutMaskFromPixels(const sensor_msgs::Image& image, const sensor_msgs::Image& depth, 
-			     cv_bridge::CvImage &mask_bridge,
-			     std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
-			     std::vector<shared_autonomy_msgs::Pixel> background_pixels);
-  bool matFromImageMessage(const sensor_msgs::Image& image, cv::Mat& mat);
-  
+  bool getPixelLabels(const cv_bridge::CvImage &image_bridge, const cv_bridge::CvImage &mask_bridge, 
+                      std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
+                      std::vector<shared_autonomy_msgs::Pixel> &background_pixels);
+  bool getBoundingBox(const cv_bridge::CvImage &image,
+                      int &min_col, int &max_col, int &min_row, int &max_row);
+  void maskFromBB(cv_bridge::CvImage &mask_bridge, int min_col, int max_col, int min_row, int max_row);
+  void grabcutMaskFromBB(const cv_bridge::CvImage &rgb_bridge, const cv_bridge::CvImage &depth_bridge, 
+                         cv_bridge::CvImage &mask_bridge, int min_col, int max_col, int min_row, int max_row);
+  void grabcutMaskFromPixels(const cv_bridge::CvImage &rgb_bridge, const cv_bridge::CvImage &depth_bridge, 
+                             cv_bridge::CvImage &mask_bridge,
+                             const std::vector<shared_autonomy_msgs::Pixel>& foreground_pixels,
+                             const std::vector<shared_autonomy_msgs::Pixel>& background_pixels);
+  bool matFromRGBMessage(const sensor_msgs::Image& image, cv::Mat& mat);
+  bool matFromDepthMessage(const sensor_msgs::Image& image, cv::Mat& mat);
   bool checkHMIConnected();
 
   // -------------------- parameters ------------------
@@ -78,9 +78,9 @@ Grabcut3dSegmentation::~Grabcut3dSegmentation(void) {
 
 }
 
-bool Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, const sensor_msgs::Image& mask,
-					   std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
-					   std::vector<shared_autonomy_msgs::Pixel> &background_pixels) {
+bool Grabcut3dSegmentation::getPixelLabels(const cv_bridge::CvImage &image_bridge, const cv_bridge::CvImage &mask_bridge,
+                                           std::vector<shared_autonomy_msgs::Pixel> &foreground_pixels,
+                                           std::vector<shared_autonomy_msgs::Pixel> &background_pixels) {
 
   ROS_INFO("grabcut3d_segmentation in getPixelLabels");
   foreground_pixels.clear();
@@ -91,8 +91,8 @@ bool Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, cons
   // Package up segmentation goal for the HMI, and send it out
   shared_autonomy_msgs::EditPixelGoal label_goal;
   shared_autonomy_msgs::EditPixelResult label_result;
-  label_goal.image = image;
-  label_goal.mask = mask;
+  image_bridge.toImageMsg(label_goal.image);
+  mask_bridge.toImageMsg(label_goal.mask);
   label_client_.sendGoal(label_goal);
 
   ROS_INFO("grabcut3d_segmentation sent edit pixel goal");
@@ -137,16 +137,15 @@ bool Grabcut3dSegmentation::getPixelLabels(const sensor_msgs::Image& image, cons
   }
 }
 
-
-bool Grabcut3dSegmentation::getBoundingBox(const sensor_msgs::Image& image, 
-					   int *min_col, int *max_col, int *min_row, int *max_row) {
+bool Grabcut3dSegmentation::getBoundingBox(const cv_bridge::CvImage &image_bridge,
+                                           int &min_col, int &max_col, int &min_row, int &max_row) {
 
   ROS_INFO("grabcut3d_segmentation in getBoundingBox");
   bool segment_preempted = false;
 
   shared_autonomy_msgs::BoundingBoxGoal bb_goal;
   shared_autonomy_msgs::BoundingBoxResult bb_result;
-  bb_goal.image = image;
+  image_bridge.toImageMsg(bb_goal.image);
   bb_client_.sendGoal(bb_goal);
 
   ROS_INFO("grabcut3d_segmentation sent goal");
@@ -164,10 +163,10 @@ bool Grabcut3dSegmentation::getBoundingBox(const sensor_msgs::Image& image,
     if(bb_client_.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
       ROS_INFO("grabcut3d_segmentation's bbox client returned successfully");
       bb_result = *bb_client_.getResult();
-      *min_col = bb_result.min_col.data;
-      *max_col = bb_result.max_col.data;
-      *min_row = bb_result.min_row.data;
-      *max_row = bb_result.max_row.data;
+      min_col = bb_result.min_col.data;
+      max_col = bb_result.max_col.data;
+      min_row = bb_result.min_row.data;
+      max_row = bb_result.max_row.data;
       return true;
     }
     else { // preempted, aborted, rejected, etc. ...
@@ -194,10 +193,10 @@ bool Grabcut3dSegmentation::getBoundingBox(const sensor_msgs::Image& image,
 
 // fill mask in w/ bounds from bbox call
 // TODO: try using this, and varying the rule for what it's filled as (probable/definite)
-void Grabcut3dSegmentation::maskFromBB(cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
+void Grabcut3dSegmentation::maskFromBB(cv_bridge::CvImage &mask_bridge, int min_col, int max_col, int min_row, int max_row) {
   cv::Point p1 = cv::Point(min_col, min_row);
   cv::Point p2 = cv::Point(max_col, max_row);
-  cv::rectangle(mask, p1, p2, 1, CV_FILLED);
+  cv::rectangle(mask_bridge.image, p1, p2, 1, CV_FILLED);
 }
 
 /*
@@ -207,10 +206,25 @@ void Grabcut3dSegmentation::maskFromBB(cv::Mat &mask, int min_col, int max_col, 
  * @param image - opencv Mat image
  *
  */
-bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_msg, cv::Mat& image) {
+bool Grabcut3dSegmentation::matFromRGBMessage(const sensor_msgs::Image& image_msg, cv::Mat& image) {
   cv_bridge::CvImagePtr cv_ptr;
   try {
     cv_ptr = cv_bridge::toCvCopy(image_msg);
+    ROS_INFO("DEPTH encoding: %s", cv_ptr->encoding.c_str());
+  }
+  catch (cv_bridge::Exception& e) {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    return false;
+  }
+
+  image = cv_ptr->image;
+  return true;
+}
+
+bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_msg, cv::Mat& depth) {
+  cv_bridge::CvImagePtr cv_ptr;
+  try {
+    cv_ptr = cv_bridge::toCvCopy(depth_msg);
     ROS_INFO("DEPTH encoding: %s", cv_ptr->encoding.c_str());
   }
   catch (cv_bridge::Exception& e) {
@@ -222,33 +236,27 @@ bool Grabcut3dSegmentation::matFromImageMessage(const sensor_msgs::Image& image_
   // http://answers.ros.org/question/10222/openni_camera-depth-image-opencv/
   // TODO: test that this image makes sense (publish it and listen on image_view?)
   double scaled_depth;
-  if(cv_ptr->encoding == "32FC1") {
-    image = cv::Mat(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
-    for(int i = 0; i < cv_ptr->image.rows; i++)
-    {
-        float* Di = cv_ptr->image.ptr<float>(i);
-        char* Ii = image.ptr<char>(i);
-        for(int j = 0; j < cv_ptr->image.cols; j++)
-        {   
-	  scaled_depth = std::min(1.0, std::max(0.0, (Di[j]-min_range_)/(max_range_-min_range_)));
-	  Ii[j] = (char) (255*scaled_depth);
-        }   
-    }
-  }
+  if(cv_ptr->encoding != "32FC1") {
+    ROS_ERROR("Grabcut3dSegmentation::matFromDepthMessage expects depth to be 32FC1");
+    return false;
+  } 
   else {
-    image = cv_ptr->image;
+    depth = cv::Mat(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
+    for(int i = 0; i < cv_ptr->image.rows; i++) {
+      float* Di = cv_ptr->image.ptr<float>(i);
+      char* Ii = depth.ptr<char>(i);
+      for(int j = 0; j < cv_ptr->image.cols; j++) {
+        scaled_depth = std::min(1.0, std::max(0.0, (Di[j]-min_range_)/(max_range_-min_range_)));
+        Ii[j] = (char) (255*scaled_depth);
+      }   
+    }
   }
   return true;
 }
 
 // fill mask in w/ result from calling grabcut_3d w/ bounding box
-void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_image, const sensor_msgs::Image& ros_depth, 
-					      cv::Mat &mask, int min_col, int max_col, int min_row, int max_row) {
-
-  cv::Mat mat_image;
-  matFromImageMessage(ros_image, mat_image);
-  cv::Mat mat_depth;
-  matFromImageMessage(ros_depth, mat_depth);
+void Grabcut3dSegmentation::grabcutMaskFromBB(const cv_bridge::CvImage &rgb_bridge, const cv_bridge::CvImage &depth_bridge, 
+                                              cv_bridge::CvImage &mask_bridge, int min_col, int max_col, int min_row, int max_row) {
   
   // we're initializing from rect, so fill it in w/ input bounds
   cv::Rect rect = cv::Rect(min_col, min_row, max_col-min_col, max_row-min_row); 
@@ -258,17 +266,17 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const sensor_msgs::Image& ros_imag
   cv::Mat fgd_model;
 
   //TODO: does this init as probable or forced for things outside of the rectangle?
-  grabCut3D(mat_image, mat_depth, mask, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
+  grabCut3D(rgb_bridge.image, depth_bridge.image, mask_bridge.image, 
+            rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_RECT);
 }
 
 // updates the input mask with new classification based on input pixel labels
-// sets 
-void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_image, const sensor_msgs::Image& ros_depth, 
-						  cv_bridge::CvImage &mask_bridge,
-						  std::vector<shared_autonomy_msgs::Pixel> foreground_pixels,
-						  std::vector<shared_autonomy_msgs::Pixel> background_pixels) {
+void Grabcut3dSegmentation::grabcutMaskFromPixels(const cv_bridge::CvImage &rgb_bridge, const cv_bridge::CvImage &depth_bridge, 
+                                                  cv_bridge::CvImage &mask_bridge,
+                                                  const std::vector<shared_autonomy_msgs::Pixel>& foreground_pixels,
+                                                  const std::vector<shared_autonomy_msgs::Pixel>& background_pixels) {
   // TODO: make this a parameter
-  std::vector<shared_autonomy_msgs::Pixel>::iterator it;
+  std::vector<shared_autonomy_msgs::Pixel>::const_iterator it;
   for(it = foreground_pixels.begin(); it != foreground_pixels.end(); it++) {
     cv::Point pp = cv::Point((*it).u, (*it).v);
     cv::circle(mask_bridge.image, pp, click_radius_, cv::GC_FGD, CV_FILLED);
@@ -282,12 +290,8 @@ void Grabcut3dSegmentation::grabcutMaskFromPixels(const sensor_msgs::Image& ros_
   cv::Mat bgd_model;
   cv::Mat fgd_model;
 
-  cv::Mat mat_image;
-  matFromImageMessage(ros_image, mat_image);
-  cv::Mat mat_depth;
-  matFromImageMessage(ros_depth, mat_depth);
-
-  grabCut3D(mat_image, mat_depth, mask_bridge.image, rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_MASK);
+  grabCut3D(rgb_bridge.image, depth_bridge.image, mask_bridge.image, 
+            rect, bgd_model, fgd_model, grabcut_iters_, cv::GC_INIT_WITH_MASK);
 
 }
 
@@ -321,8 +325,23 @@ bool Grabcut3dSegmentation::checkHMIConnected() {
 
 //TODO: I kind of dislike how all the helper functions are the ones that actually handle
 // setting the actionlib server status, but it got too cumbersome to have it at the top level
+// TODO: checking every time if we foo_succeeded before continuing is ugly. better alternative?
+
 void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::SegmentGoalConstPtr &segment_goal) {
   ROS_INFO("grabcut3d_segmentation::segmentExecuteCB called");
+
+  // local storage of data is in cv_bridge::CvImage format. 
+  // Conversions to ROS happen as close as possible to the callback/publish function
+  cv::Mat rgb_mat;
+  matFromRGBMessage(segment_goal->image, rgb_mat);
+  cv_bridge::CvImage rgb_bridge(segment_goal->image.header, segment_goal->image.encoding, rgb_mat);
+
+  cv::Mat depth_mat;
+  matFromDepthMessage(segment_goal->depth, depth_mat);
+  cv_bridge::CvImage depth_bridge(segment_goal->depth.header, "mono8", depth_mat);
+
+  cv::Mat mask_mat = cv::Mat::zeros(segment_goal->image.height, segment_goal->image.width, CV_8UC1);
+  cv_bridge::CvImage mask_bridge(segment_goal->image.header, "mono8", mask_mat);
 
   // Check if HMI server is up; if not, we can't do segmentation
   bool hmi_server_connected = checkHMIConnected();
@@ -330,50 +349,36 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
     return;
   }
 
-  // Get initial bounding box
+  // Get initial bounding box; this SETS col/row values ...
   int min_col, max_col, min_row, max_row;
-  bool bb_succeeded = getBoundingBox(segment_goal->image, &min_col, &max_col, &min_row, &max_row);
+  bool bb_succeeded = getBoundingBox(rgb_bridge, min_col, max_col, min_row, max_row);
   if(!bb_succeeded) {
     return;
   }
 
   // initialize mask from rectangle or initial segmentation
-  cv::Mat mask_mat = cv::Mat::zeros(segment_goal->image.height, segment_goal->image.width, CV_8UC1);
-  cv_bridge::CvImage mask_bridge(segment_goal->image.header, "mono8", mask_mat);
-  //maskFromBB(mask, min_col, max_col, min_row, max_row);
-  grabcutMaskFromBB(segment_goal->image, segment_goal->depth, mask_bridge.image, min_col, max_col, min_row, max_row);
+  grabcutMaskFromBB(rgb_bridge, depth_bridge, mask_bridge, min_col, max_col, min_row, max_row);
   ROS_INFO("rectangle added to cv::Mat");
-
-  // TODO: this is a mess. where do we use the ROS message types, and where do we use the cv?
-  // I'm just keeping both versions around for the mask ... 
-  sensor_msgs::Image mask_img;
-  mask_bridge.toImageMsg(mask_img);
 
   std::vector<shared_autonomy_msgs::Pixel> foreground_pixels;
   std::vector<shared_autonomy_msgs::Pixel> background_pixels;
   shared_autonomy_msgs::Pixel mypixel;
 
-  // TODO: checking every time if we have valid info before continuing is ugly. 
-  // better alternative?
-  // TODO: I hate how these functions take different data format and I have to 
-  // convert every time; best to convert inside function and only have to do it once
-  bool label_succeeded = getPixelLabels(segment_goal->image, mask_img, foreground_pixels, background_pixels);
+  bool label_succeeded = getPixelLabels(rgb_bridge, mask_bridge, foreground_pixels, background_pixels);
   if(!label_succeeded) {
     return;
   }
   while (!(foreground_pixels.empty() and background_pixels.empty())) {
-    grabcutMaskFromPixels(segment_goal->image, segment_goal->depth, mask_bridge, foreground_pixels, background_pixels);
-    mask_bridge.toImageMsg(mask_img);
-    label_succeeded = getPixelLabels(segment_goal->image, mask_img, foreground_pixels, background_pixels);
+    grabcutMaskFromPixels(rgb_bridge, depth_bridge, mask_bridge, foreground_pixels, background_pixels);
+    label_succeeded = getPixelLabels(rgb_bridge, mask_bridge, foreground_pixels, background_pixels);
     if (!label_succeeded) {
       return;
     }
   }
 
-  // return mask (work w/ openCV functions, then convert at the last minute?)
+  // return segmentation result
   shared_autonomy_msgs::SegmentResult segmentation_result;
-  mask_bridge.toImageMsg(mask_img);
-  segmentation_result.mask = mask_img;
+  mask_bridge.toImageMsg(segmentation_result.mask);
   segment_server_.setSucceeded(segmentation_result);
 
 }

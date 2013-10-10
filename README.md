@@ -27,8 +27,14 @@ To run the current setup:
   * InteractiveMarkers /im_gui/update
 
 5) in rviz:
+  * Be sure that the image axes are oriented correctly 
+    (interactive markers are offset from image markers by 5cm +z to facilitate clicking)
   * drag corners of the interactive marker to enclose the object you want to segment
   * right click on IM -> accept ROI 
+  * look at proposed segmentation; right-click to label pixels as fg/bg; 
+    click "done labelling" to see resulting proposed segmentation
+  * repeat previous step until segmentation looks good; 
+    click "done labelling" w/o providing labels to continue to next step
   * check that the points published on /segmented_points were all of the 3d points inside the bounding box
   
 ================
