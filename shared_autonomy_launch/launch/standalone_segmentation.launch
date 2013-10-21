@@ -43,6 +43,7 @@
     <param name="min_range" value="0.25"/>
     <param name="max_range" value="3.0"/>
     <param name="click_radius" value="20"/>
+    <param name="depth_interpolation_radius" value="10.0"/>
   </node>
   
   <!-- Implements the Interactive Marker server and all the actionlib services

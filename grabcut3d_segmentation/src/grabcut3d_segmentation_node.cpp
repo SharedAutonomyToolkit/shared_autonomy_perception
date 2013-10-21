@@ -5,9 +5,10 @@
 #include <actionlib/server/simple_action_server.h>
 #include <grabcut_3d/grabcut_3d.h>
 
+// TODO: I would have thought that I needed more direct includes in order to compile...
 //#include <pcl/point_cloud.h> // from tutorial
-#include <pcl/point_types.h> // from tutorial AND ben's code
-#include <pcl/kdtree/kdtree_flann.h> // guessing, from kdtree http://docs.pointclouds.org/trunk/classpcl_1_1_kd_tree.html
+//#include <pcl/point_types.h> 
+#include <pcl/kdtree/kdtree_flann.h> 
 //#include <pcl/features/feature.h> // from ben's code
 //#include <pcl/registration/transforms.h> // from ben's code
 
@@ -23,8 +24,10 @@ class Grabcut3dSegmentation {
 protected:
   ros::NodeHandle root_nh_;
   ros::NodeHandle priv_nh_;
+  // for testing the depth interpolation; should be removed eventually
   ros::Publisher depth_pub_;
   ros::Publisher interp_pub_;
+
   actionlib::SimpleActionServer<shared_autonomy_msgs::SegmentAction> segment_server_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::EditPixelAction> label_client_;
@@ -48,14 +51,22 @@ protected:
 
   // -------------------- parameters ------------------
   double loop_rate_;
-  double preempt_wait_; // how long to give servers to cancel the goal
-  double connect_wait_; // how long to wait when trying to initially connect
-  int grabcut_iters_; // how many iterations to allow grabcut3D
-  double min_range_; // parameters for scaling depth image from 32FC1 -> 8UC1
+  // how long to give servers to cancel the goal
+  double preempt_wait_; 
+  // how long to wait when trying to initially connect
+  double connect_wait_; 
+  // how many iterations to allow grabcut3D
+  int grabcut_iters_; 
+  // parameters for scaling depth image from 32FC1 -> 8UC1
+  double min_range_; 
   double max_range_;
-  // TODO: This suggests to me that maybe we should have the radius on the GUI
-  // side of this, and take in an exact list of pixels, or a mask? 
-  int click_radius_; // how many pixels around a mouse click are set to fg/bg
+  // TODO: maybe we should have the radius on the GUI
+  //      side of this, and take in an exact list of pixels, or a mask? 
+  // how many pixels around a mouse click are set to fg/bg
+  int click_radius_; 
+  // we perform k-nn interpolation on the depth image before segmentation; 
+  //      this controls how many empty pixels we'll smooth over
+  double depth_interpolation_radius_; 
 
 public:
   Grabcut3dSegmentation(std::string segment_name, std::string bb_name, std::string label_name);
@@ -78,6 +89,7 @@ Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::stri
   priv_nh_.param<double>(std::string("min_range"), min_range_, 0.0);
   priv_nh_.param<double>(std::string("max_range"), max_range_, 2.5);
   priv_nh_.param<int>(std::string("click_radius"), click_radius_, 5);
+  priv_nh_.param<double>(std::string("depth_interpolation_radius"), depth_interpolation_radius_, 4.0);
 
   ROS_INFO("grabcut3D segmentation initialized");
 
@@ -264,7 +276,6 @@ bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_
         if(Di[j] > 0) {
           scaled_depth = std::min(1.0, std::max(0.0, (Di[j]-min_range_)/(max_range_-min_range_)));
           Ii[j] = (char) (254*scaled_depth);
-          Ii[j] = (char) 0;
         } 
         else {
           Ii[j] = (char) 255; // white!
@@ -292,11 +303,11 @@ void Grabcut3dSegmentation::grabcutMaskFromBB(const cv_bridge::CvImage &rgb_brid
 }
 
 // updates the input mask with new classification based on input pixel labels
-void Grabcut3dSegmentation::grabcutMaskFromPixels(const cv_bridge::CvImage &rgb_bridge, const cv_bridge::CvImage &depth_bridge, 
+void Grabcut3dSegmentation::grabcutMaskFromPixels(const cv_bridge::CvImage &rgb_bridge, 
+						  const cv_bridge::CvImage &depth_bridge, 
                                                   cv_bridge::CvImage &mask_bridge,
                                                   const std::vector<shared_autonomy_msgs::Pixel>& foreground_pixels,
                                                   const std::vector<shared_autonomy_msgs::Pixel>& background_pixels) {
-  // TODO: make this a parameter
   std::vector<shared_autonomy_msgs::Pixel>::const_iterator it;
   for(it = foreground_pixels.begin(); it != foreground_pixels.end(); it++) {
     cv::Point pp = cv::Point((*it).u, (*it).v);
@@ -339,9 +350,10 @@ bool Grabcut3dSegmentation::checkHMIConnected() {
 
 // This function copied from bosch-internal/stacks/shared_autonomy/grabcut_3d_and_2d/src/grabcut_3d_app.cpp
 void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_image) {
-  // TODo: need cleaner way of communicating that this is nan depth =(
+  // TODO: need cleaner way of communicating that this is nan depth =(
   // it's currently also hard-coded in mat from depth message, and depends on the driver's conventions
   char nan_val = 255;
+
   // construct cloud used for NN calculations
   pcl::PointCloud<pcl::PointXY> cloud;
   cv::Size size = depth_image.size();
@@ -362,7 +374,7 @@ void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_
   pcl::KdTreeFLANN<pcl::PointXY> kdtree; 
   int kk = 1; // how many neighbors we'll ask nearestKSearch for
   std::vector<int> k_indices(kk);
-  std::vector<float> k_distances(kk);
+  std::vector<float> k_distances(kk); // will be SQUARE of distance to points in k_indices
 
   pcl::PointCloud<pcl::PointXY>::ConstPtr cloud_ptr = boost::make_shared< const pcl::PointCloud<pcl::PointXY> > (cloud);
   kdtree.setInputCloud(cloud_ptr);
@@ -376,8 +388,7 @@ void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_
         pt.x = (float) col;
         pt.y = (float) row;
         kdtree.nearestKSearch(pt, kk, k_indices, k_distances);
-        // TODO: make this a parameter
-        if(k_distances[0] < 20.0) { // only consider points w/in sqrt(20) dist
+        if(k_distances[0] < depth_interpolation_radius_*depth_interpolation_radius_) { // only consider points w/in sqrt(20) dist
           const pcl::PointXY& closest_point = cloud.points[k_indices[0]];
           lineptr[col] = depth_image.at<char>(closest_point.y, closest_point.x);
         }
@@ -385,13 +396,6 @@ void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_
     }
   }
 }
-
-  // TODO: This needs better sub-functions... have them return bool for success, and return if not?
-  // * check HMI server up
-  // * obtain bounding_box
-  // * bbox bounds to mask
-  // * obtain labels/acceptance
-  // * update mask w/ labels
 
 //TODO: I kind of dislike how all the helper functions are the ones that actually handle
 // setting the actionlib server status, but it got too cumbersome to have it at the top level
@@ -417,6 +421,7 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   ROS_INFO("published depth image!");
   
   interpolateDepthImageNearestNeighbor(depth_mat);  
+
   cv_bridge::CvImage depth_bridge(segment_goal->depth.header, "mono8", depth_mat);
   //testing the interpolation!
   sensor_msgs::Image depth_image;
