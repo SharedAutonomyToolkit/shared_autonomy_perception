@@ -23,8 +23,6 @@
   </node>
 
   <!-- This handles the interactive segmentation of objects -->
-  <!-- TODO: make the segmentation service + bb + image labeling topics/services
-  parameters!!! NO. It's better to have them hardcoded, then remapped in the launch-->
 
   <node name="grabcut3d_segmentation_node" pkg="grabcut3d_segmentation" type="grabcut3d_segmentation_node" output="screen">
     <remap from="segment_service" to="$(arg segment_service)"/>

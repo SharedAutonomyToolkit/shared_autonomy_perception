@@ -71,7 +71,6 @@ KinectAssembler::~KinectAssembler() {
 
 // TODO: Do I want fancier logic here where we can only send a given set of data once?
 void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& depth, const CameraInfoConstPtr& info, const PointCloud2ConstPtr& points) {
-  ROS_INFO("assemble_kinect callback called!");
   resp_.image = *image;
   resp_.depth = *depth;
   resp_.info = *info;

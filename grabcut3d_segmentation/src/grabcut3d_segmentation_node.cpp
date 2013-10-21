@@ -4,14 +4,9 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/server/simple_action_server.h>
 #include <grabcut_3d/grabcut_3d.h>
-
-// TODO: I would have thought that I needed more direct includes in order to compile...
-//#include <pcl/point_cloud.h> // from tutorial
-//#include <pcl/point_types.h> 
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h> 
 #include <pcl/kdtree/kdtree_flann.h> 
-//#include <pcl/features/feature.h> // from ben's code
-//#include <pcl/registration/transforms.h> // from ben's code
-
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/Image.h>
 #include <shared_autonomy_msgs/BoundingBoxAction.h>
@@ -260,7 +255,6 @@ bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_
 
   // handling depth images, and manually converting them, as described in:
   // http://answers.ros.org/question/10222/openni_camera-depth-image-opencv/
-  // TODO: test that this image makes sense (publish it and listen on image_view?)
   double scaled_depth;
   if(cv_ptr->encoding != "32FC1") {
     ROS_ERROR("Grabcut3dSegmentation::matFromDepthMessage expects depth to be 32FC1");
@@ -278,7 +272,7 @@ bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_
           Ii[j] = (char) (254*scaled_depth);
         } 
         else {
-          Ii[j] = (char) 255; // white!
+          Ii[j] = (char) 255; // (also hard-coded into interpolateDepthImageNearestNeighbor)
         }
       }   
     }
@@ -351,7 +345,7 @@ bool Grabcut3dSegmentation::checkHMIConnected() {
 // This function copied from bosch-internal/stacks/shared_autonomy/grabcut_3d_and_2d/src/grabcut_3d_app.cpp
 void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_image) {
   // TODO: need cleaner way of communicating that this is nan depth =(
-  // it's currently also hard-coded in mat from depth message, and depends on the driver's conventions
+  // it's currently also hard-coded in matFromDepthMessage, and depends on the driver's conventions
   char nan_val = 255;
 
   // construct cloud used for NN calculations
@@ -361,7 +355,7 @@ void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_
   for(int row = 0; row< size.height; row++) {
     char* lineptr = depth_image.ptr<char>(row);
     for(int col = 0; col < size.width; col++) {
-      if(lineptr[col] != nan_val) { // TODO: are all NANs represented by 0's in the code? make variable!
+      if(lineptr[col] != nan_val) { 
         pcl::PointXY pt;
         pt.x = (float) col;
         pt.y = (float) row;
@@ -388,7 +382,7 @@ void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_
         pt.x = (float) col;
         pt.y = (float) row;
         kdtree.nearestKSearch(pt, kk, k_indices, k_distances);
-        if(k_distances[0] < depth_interpolation_radius_*depth_interpolation_radius_) { // only consider points w/in sqrt(20) dist
+        if(k_distances[0] < depth_interpolation_radius_*depth_interpolation_radius_) { 
           const pcl::PointXY& closest_point = cloud.points[k_indices[0]];
           lineptr[col] = depth_image.at<char>(closest_point.y, closest_point.x);
         }
