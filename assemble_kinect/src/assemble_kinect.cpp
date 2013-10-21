@@ -55,7 +55,7 @@ KinectAssembler::KinectAssembler() :
   info_sub_(root_nh_, "camera/depth_registered/camera_info", 1),
   points_sub_(root_nh_, "camera/depth_registered/points", 1),
   // 10 is queue size for the synching approach
-  sync_(KinectSyncPolicy(10), image_sub_, depth_sub_, info_sub_, points_sub_) {
+  sync_(KinectSyncPolicy(100), image_sub_, depth_sub_, info_sub_, points_sub_) {
 
   sync_.registerCallback(boost::bind(&KinectAssembler::approxCB, this, _1, _2, _3, _4));
 
@@ -71,7 +71,7 @@ KinectAssembler::~KinectAssembler() {
 
 // TODO: Do I want fancier logic here where we can only send a given set of data once?
 void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& depth, const CameraInfoConstPtr& info, const PointCloud2ConstPtr& points) {
-  //ROS_INFO("assemble_kinect callback called!");
+  ROS_INFO("assemble_kinect callback called!");
   resp_.image = *image;
   resp_.depth = *depth;
   resp_.info = *info;
