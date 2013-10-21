@@ -4,7 +4,15 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/server/simple_action_server.h>
 #include <grabcut_3d/grabcut_3d.h>
+
+//#include <pcl/point_cloud.h> // from tutorial
+#include <pcl/point_types.h> // from tutorial AND ben's code
+#include <pcl/kdtree/kdtree_flann.h> // guessing, from kdtree http://docs.pointclouds.org/trunk/classpcl_1_1_kd_tree.html
+//#include <pcl/features/feature.h> // from ben's code
+//#include <pcl/registration/transforms.h> // from ben's code
+
 #include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/Image.h>
 #include <shared_autonomy_msgs/BoundingBoxAction.h>
 #include <shared_autonomy_msgs/EditPixelAction.h>
 #include <shared_autonomy_msgs/Pixel.h>
@@ -15,6 +23,8 @@ class Grabcut3dSegmentation {
 protected:
   ros::NodeHandle root_nh_;
   ros::NodeHandle priv_nh_;
+  ros::Publisher depth_pub_;
+  ros::Publisher interp_pub_;
   actionlib::SimpleActionServer<shared_autonomy_msgs::SegmentAction> segment_server_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::BoundingBoxAction> bb_client_;
   actionlib::SimpleActionClient<shared_autonomy_msgs::EditPixelAction> label_client_;
@@ -34,6 +44,7 @@ protected:
   bool matFromRGBMessage(const sensor_msgs::Image& image, cv::Mat& mat);
   bool matFromDepthMessage(const sensor_msgs::Image& image, cv::Mat& mat);
   bool checkHMIConnected();
+  void interpolateDepthImageNearestNeighbor(cv::Mat& depth_image);
 
   // -------------------- parameters ------------------
   double loop_rate_;
@@ -71,6 +82,9 @@ Grabcut3dSegmentation::Grabcut3dSegmentation(std::string segment_name, std::stri
   ROS_INFO("grabcut3D segmentation initialized");
 
   segment_server_.start();
+
+  depth_pub_ = root_nh_.advertise<sensor_msgs::Image>("original_depth", 5);
+  interp_pub_ = root_nh_.advertise<sensor_msgs::Image>("interpolated_depth", 5);
 
 }
 
@@ -246,8 +260,15 @@ bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_
       float* Di = cv_ptr->image.ptr<float>(i);
       char* Ii = depth.ptr<char>(i);
       for(int j = 0; j < cv_ptr->image.cols; j++) {
-        scaled_depth = std::min(1.0, std::max(0.0, (Di[j]-min_range_)/(max_range_-min_range_)));
-        Ii[j] = (char) (255*scaled_depth);
+        // need to preserve the NaN depths...
+        if(Di[j] > 0) {
+          scaled_depth = std::min(1.0, std::max(0.0, (Di[j]-min_range_)/(max_range_-min_range_)));
+          Ii[j] = (char) (254*scaled_depth);
+          Ii[j] = (char) 0;
+        } 
+        else {
+          Ii[j] = (char) 255; // white!
+        }
       }   
     }
   }
@@ -316,6 +337,55 @@ bool Grabcut3dSegmentation::checkHMIConnected() {
   return true;
 }
 
+// This function copied from bosch-internal/stacks/shared_autonomy/grabcut_3d_and_2d/src/grabcut_3d_app.cpp
+void Grabcut3dSegmentation::interpolateDepthImageNearestNeighbor(cv::Mat& depth_image) {
+  // TODo: need cleaner way of communicating that this is nan depth =(
+  // it's currently also hard-coded in mat from depth message, and depends on the driver's conventions
+  char nan_val = 255;
+  // construct cloud used for NN calculations
+  pcl::PointCloud<pcl::PointXY> cloud;
+  cv::Size size = depth_image.size();
+  int point_id = 0;
+  for(int row = 0; row< size.height; row++) {
+    char* lineptr = depth_image.ptr<char>(row);
+    for(int col = 0; col < size.width; col++) {
+      if(lineptr[col] != nan_val) { // TODO: are all NANs represented by 0's in the code? make variable!
+        pcl::PointXY pt;
+        pt.x = (float) col;
+        pt.y = (float) row;
+        cloud.points.push_back(pt);
+      }
+    }
+  }
+  
+  // setting up the kdtree for interpolation
+  pcl::KdTreeFLANN<pcl::PointXY> kdtree; 
+  int kk = 1; // how many neighbors we'll ask nearestKSearch for
+  std::vector<int> k_indices(kk);
+  std::vector<float> k_distances(kk);
+
+  pcl::PointCloud<pcl::PointXY>::ConstPtr cloud_ptr = boost::make_shared< const pcl::PointCloud<pcl::PointXY> > (cloud);
+  kdtree.setInputCloud(cloud_ptr);
+
+  // actually do interpolation
+  for(int row = 0; row < size.height; row++) {
+    char* lineptr = depth_image.ptr<char>(row);
+    for(int col = 0; col < size.width; col++) {
+      if(lineptr[col] == nan_val) {
+        pcl::PointXY pt;
+        pt.x = (float) col;
+        pt.y = (float) row;
+        kdtree.nearestKSearch(pt, kk, k_indices, k_distances);
+        // TODO: make this a parameter
+        if(k_distances[0] < 20.0) { // only consider points w/in sqrt(20) dist
+          const pcl::PointXY& closest_point = cloud.points[k_indices[0]];
+          lineptr[col] = depth_image.at<char>(closest_point.y, closest_point.x);
+        }
+      }
+    }
+  }
+}
+
   // TODO: This needs better sub-functions... have them return bool for success, and return if not?
   // * check HMI server up
   // * obtain bounding_box
@@ -336,9 +406,23 @@ void Grabcut3dSegmentation::segmentExecuteCB(const shared_autonomy_msgs::Segment
   matFromRGBMessage(segment_goal->image, rgb_mat);
   cv_bridge::CvImage rgb_bridge(segment_goal->image.header, segment_goal->image.encoding, rgb_mat);
 
+  // depth images get an additional interpolation step
   cv::Mat depth_mat;
   matFromDepthMessage(segment_goal->depth, depth_mat);
+  cv_bridge::CvImage tmp_bridge(segment_goal->depth.header, "mono8", depth_mat);
+  //testing the interpolation!
+  sensor_msgs::Image tmp_image;
+  tmp_bridge.toImageMsg(tmp_image);
+  depth_pub_.publish(tmp_image);
+  ROS_INFO("published depth image!");
+  
+  interpolateDepthImageNearestNeighbor(depth_mat);  
   cv_bridge::CvImage depth_bridge(segment_goal->depth.header, "mono8", depth_mat);
+  //testing the interpolation!
+  sensor_msgs::Image depth_image;
+  depth_bridge.toImageMsg(depth_image);
+  interp_pub_.publish(depth_image);
+  ROS_INFO("published depth image!");
 
   cv::Mat mask_mat = cv::Mat::zeros(segment_goal->image.height, segment_goal->image.width, CV_8UC1);
   cv_bridge::CvImage mask_bridge(segment_goal->image.header, "mono8", mask_mat);
