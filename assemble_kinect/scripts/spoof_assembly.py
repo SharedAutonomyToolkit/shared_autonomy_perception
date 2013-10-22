@@ -1,5 +1,8 @@
 #! /usr/bin/env python
 
+import argparse
+import sys
+
 import rospy
 
 import rosbag
@@ -16,7 +19,13 @@ if __name__=="__main__":
 
     rospy.init_node("spoof_kinect_asssembly")
     
-    filename = "/home/lil1pal/table_logs/foo.bag"
+     # strip out the ROS arguments and parse 
+    myargs = rospy.myargv(argv=sys.argv)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', dest='infile')
+    parsed_args = parser.parse_args(myargs[1:])
+    filename = parsed_args.infile
+
     bag = rosbag.Bag(filename)
     
     for topic,msg,t in bag.read_messages():
