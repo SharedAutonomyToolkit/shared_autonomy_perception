@@ -4,7 +4,7 @@ project(grabcut3d_segmentation)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS actionlib cv_bridge grabcut_3d)# shared_autonomy_msgs)
+find_package(catkin REQUIRED COMPONENTS actionlib cv_bridge grabcut_3d shared_autonomy_msgs)
 find_package(OpenCV REQUIRED)
 #find_package(catkin REQUIRED COMPONENTS actionlib roscpp shared_autonomy_msgs)
 
