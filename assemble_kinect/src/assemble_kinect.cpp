@@ -38,6 +38,7 @@ private:
   // -------------- Data --------------
   shared_autonomy_msgs::KinectAssembly::Response resp_;
   bool has_data_;
+  int num_frames_; 
 
 public:
   KinectAssembler();
@@ -62,6 +63,7 @@ KinectAssembler::KinectAssembler() :
   // TODO: rgbd_assembler had something like "resolveName" here ...
   kinect_srv_ = root_nh_.advertiseService("camera/assemble_kinect", &KinectAssembler::serviceCB, this);
   has_data_ = false;
+  num_frames_ = 0;
   ROS_INFO("KinectAssembler started");
 
 }
@@ -71,6 +73,9 @@ KinectAssembler::~KinectAssembler() {
 
 // TODO: Do I want fancier logic here where we can only send a given set of data once?
 void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& depth, const CameraInfoConstPtr& info, const PointCloud2ConstPtr& points) {
+  resp_.header.stamp = ros::Time::now();
+  resp_.header.seq = num_frames_;
+  num_frames_++;
   resp_.image = *image;
   resp_.depth = *depth;
   resp_.info = *info;
@@ -81,7 +86,6 @@ void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& 
 bool KinectAssembler::serviceCB(shared_autonomy_msgs::KinectAssembly::Request &req,
 	       shared_autonomy_msgs::KinectAssembly::Response &res) {
   res = resp_;
-  ROS_INFO("service callback called!");
 
   // check that data was initialized
   if(has_data_){
