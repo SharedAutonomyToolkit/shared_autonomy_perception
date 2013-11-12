@@ -14,6 +14,9 @@ import smach
 import smach_ros
 
 from actionlib_msgs.msg import GoalStatus
+from moveit_msgs.msg import CollisionObject
+from shape_msgs.msg import SolidPrimitive
+
 from object_manipulation_msgs.srv import FindClusterBoundingBox2, FindClusterBoundingBox2Request
 from sensor_msgs.msg import PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
@@ -104,7 +107,8 @@ class GenerateGrasps(smach.State):
         smach.State.__init__(self,
                              outcomes = ['no_grasp'], 
                              input_keys = ['object_points'])
-        self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2', FindClusterBoundingBox2)
+        self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2_3d', FindClusterBoundingBox2)
+        self.collision_pub = rospy.Publisher('collision_object', CollisionObject)
     def execute(self, userdata):
         # TODO: no! there's a pointcloud2 version of the service as well!
         print 'waiting for cluster bb server'
@@ -121,8 +125,27 @@ class GenerateGrasps(smach.State):
             return 'no_grasp'
 
         print bb_resp
+        
+        self.insert_object(bb_resp.pose, bb_resp.box_dims, "box1")
 
         return 'no_grasp'
+
+    
+    def insert_object(self, pose, dims, name):
+        """ Expects a PoseStamped to be input, along with a Point and string """
+        primitive = SolidPrimitive()
+        primitive.type = primitive.BOX
+        primitive.dimensions = [dims.x, dims.y, dims.z]
+
+        add_object = CollisionObject()
+        add_object.id = name
+        add_object.header.frame_id = pose.header.frame_id
+        add_object.operation = add_object.ADD
+        
+        add_object.primitives.append(primitive)
+        add_object.primitive_poses.append(pose.pose)
+        
+        self.collision_pub.publish(add_object)
 
 # ready -> segment -> bbox + update environment (pass on object name) -> grasps (pass on generated grasps + object name) -> pickup -> drop -> reset
 def main():
