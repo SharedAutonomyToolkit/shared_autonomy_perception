@@ -2,6 +2,8 @@
 
 # This is the version of Clear Table that uses Hydro's version of moveit to actually do the pickup tasks
 
+# TODO: clean up service/topic names and turn into parameters! (+ launch file)
+
 import math
 
 import rospy
@@ -16,6 +18,7 @@ import smach_ros
 from actionlib_msgs.msg import GoalStatus
 from manipulation_msgs.srv import GraspPlanning, GraspPlanningRequest
 from moveit_msgs.msg import CollisionObject
+from moveit_msgs.msg import Grasp
 from shape_msgs.msg import SolidPrimitive
 
 from object_manipulation_msgs.srv import FindClusterBoundingBox2, FindClusterBoundingBox2Request
@@ -23,7 +26,7 @@ from object_manipulator import draw_functions
 from sensor_msgs.msg import PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
 from shared_autonomy_msgs.srv import KinectAssembly
-
+from trajectory_msgs.msg import JointTrajectoryPoint
 
 class Home(smach.State):
     def __init__(self):
@@ -107,8 +110,9 @@ class Segment(smach.State):
 class GenerateGrasps(smach.State):
     def __init__(self):
         smach.State.__init__(self,
-                             outcomes = ['no_grasp'], 
-                             input_keys = ['object_points'])
+                             outcomes = ['no_grasps'], 
+                             input_keys = ['object_points'],
+                             output_keys = ['grasps', 'object_name'])
         self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2_3d', FindClusterBoundingBox2)
         self.grasp_client = rospy.ServiceProxy('plan_point_cluster_grasp', GraspPlanning)
 
@@ -116,9 +120,12 @@ class GenerateGrasps(smach.State):
         self.collision_pub = rospy.Publisher('collision_object', CollisionObject)
 
     def execute(self, userdata):
-        # TODO: no! there's a pointcloud2 version of the service as well!
         print 'waiting for cluster bb server'
         rospy.wait_for_service('find_cluster_bounding_box2')
+        print '...got service'
+
+        print 'waiting for cluster grasp planner server'
+        rospy.wait_for_service('plan_point_cluster_grasp')
         print '...got service'
 
         bb_req = FindClusterBoundingBox2Request()
@@ -128,19 +135,65 @@ class GenerateGrasps(smach.State):
             bb_resp = self.bb_client(bb_req)
         except rospy.ServiceException:
             print 'no response from cluster bb server!'
-            return 'no_grasp'
+            return 'no_grasps'
 
         print bb_resp
         
-        self.insert_object(bb_resp.pose, bb_resp.box_dims, "box1")
+        object_name = "box1"
+        userdata.object_name = object_name
+        self.insert_object(bb_resp.pose, bb_resp.box_dims, object_name)
+         
+        req = GraspPlanningRequest()
+        req.arm_name = "left_arm"
+        req.target.region.cloud = userdata.object_points
+        # TODO: I have no idea what this "graspable object reference frame" thing is. 
+        req.target.reference_frame_id = userdata.object_points.header.frame_id
+    
+        try:
+            res = self.grasp_client(req)
+        except rospy.ServiceException:
+            print 'grasp server call failed'
+            return 'no_grasps'
 
-        grasps = self.get_grasps(userdata.object_points)
-        print grasps
+        grasps = res.grasps
         self.show_grasps(grasps)
 
-        return 'no_grasp'
+        # Finally, need to convert to moveit-compatible grasps before we can 
+        # send them along to the actual pickup node!
+        moveit_grasps = [self.convert_grasp(grasp) for grasp in grasps]
+        userdata.grasps = moveit_grasps
 
-    
+        return 'no_grasps'
+
+    def convert_grasp(self, grasp):
+        """Converts a manipulation_msgs/Grasp into moveit_msgs/Grasp
+        NOT General - specifically for the PR2, given how the pose specification 
+        and gripper controller changed"""
+        m_grasp = Grasp()
+
+        # determine which hand it's for
+        if grasp.grasp_posture.name[0] == 'l_gripper_l_finger_joint':
+            hand_joints = ['l_gripper_motor_screw_joint']
+        else:
+            hand_joints = ['r_gripper_motor_screw_joint']
+
+        first_point = JointTrajectoryPoint()
+        first_point.positions = [grasp.grasp_posture.position[0]]
+        m_grasp.pre_grasp_posture.points.append(first_point)
+
+        second_point = JointTrajectoryPoint()
+        second_point.positions = [grasp.pre_grasp_posture.position[0]]
+        m_grasp.grasp_posture.points.append(second_point)
+
+        m_grasp.grasp_pose = grasp.grasp_pose
+        m_grasp.grasp_quality = grasp.grasp_quality
+        m_grasp.max_contact_force = grasp.max_contact_force
+
+        m_grasp.pre_grasp_approach = grasp.approach
+        m_grasp.post_grasp_retreat = grasp.retreat
+
+        return m_grasp
+
     def insert_object(self, pose, dims, name):
         """ Expects a PoseStamped to be input, along with a Point and string """
         primitive = SolidPrimitive()
@@ -156,19 +209,6 @@ class GenerateGrasps(smach.State):
         add_object.primitive_poses.append(pose.pose)
         
         self.collision_pub.publish(add_object)
-
-
-    def get_grasps(self, points):
-         
-        req = GraspPlanningRequest()
-        req.arm_name = "left_arm"
-        req.target.region.cloud = points
-        # TODO: I have no idea what this "graspable object reference frame" thing is. 
-        req.target.reference_frame_id = points.header.frame_id
-    
-        # TODO: should wrap in try/except block
-        res = self.grasp_client(req)
-        return res.grasps
 
     def show_grasps(self, grasps): 
         poses = [grasp.grasp_pose.pose for grasp in grasps] 
@@ -193,7 +233,7 @@ def main():
                                               'no_data':'SEGMENT',
                                               'no_objects':'HOME'})# NYI
         smach.StateMachine.add('GENERATE_GRASPS', GenerateGrasps(),
-                               transitions = {'no_grasp':'HOME'})
+                               transitions = {'no_grasps':'HOME'})
         #                                      'grasp_found':'PICKUP'})
         #        smach.StateMachine.add('PICKUP', Pickup(),
         #                               transitions = {'pickup_failed':'HOME',
