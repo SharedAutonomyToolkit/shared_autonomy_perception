@@ -55,7 +55,15 @@
     <remap from="segment_service" to="$(arg segment_service)"/>
     <param name="data_wait" value="10.0"/>
   </node>
--->
+-->  
+
   <node name="cluster_bb" pkg="object_manipulator" type="cluster_bounding_box_finder_server.py"/>
+
+  <rosparam command="load" file="$(find pr2_object_manipulation_launch)/config/pr2_hand_descriptions.yaml"/>
+  <include file="$(find pr2_gripper_grasp_planner_cluster)/launch/pr2_gripper_grasp_planner_cluster_server.launch">
+    <arg name="use_machine" value="false"/> <!-- want to run locally -->
+  </include>
+
+  <node name="cluster_grasps" pkg="pr2_gripper_grasp_planner_cluster" type="point_cluster_grasp_planner_server.py"/>
 
 </launch>

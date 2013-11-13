@@ -14,10 +14,12 @@ import smach
 import smach_ros
 
 from actionlib_msgs.msg import GoalStatus
+from manipulation_msgs.srv import GraspPlanning, GraspPlanningRequest
 from moveit_msgs.msg import CollisionObject
 from shape_msgs.msg import SolidPrimitive
 
 from object_manipulation_msgs.srv import FindClusterBoundingBox2, FindClusterBoundingBox2Request
+from object_manipulator import draw_functions
 from sensor_msgs.msg import PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
 from shared_autonomy_msgs.srv import KinectAssembly
@@ -108,7 +110,11 @@ class GenerateGrasps(smach.State):
                              outcomes = ['no_grasp'], 
                              input_keys = ['object_points'])
         self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2_3d', FindClusterBoundingBox2)
+        self.grasp_client = rospy.ServiceProxy('plan_point_cluster_grasp', GraspPlanning)
+
+        self.draw_functions = draw_functions.DrawFunctions('grasp_markers')
         self.collision_pub = rospy.Publisher('collision_object', CollisionObject)
+
     def execute(self, userdata):
         # TODO: no! there's a pointcloud2 version of the service as well!
         print 'waiting for cluster bb server'
@@ -128,6 +134,10 @@ class GenerateGrasps(smach.State):
         
         self.insert_object(bb_resp.pose, bb_resp.box_dims, "box1")
 
+        grasps = self.get_grasps(userdata.object_points)
+        print grasps
+        self.show_grasps(grasps)
+
         return 'no_grasp'
 
     
@@ -146,6 +156,27 @@ class GenerateGrasps(smach.State):
         add_object.primitive_poses.append(pose.pose)
         
         self.collision_pub.publish(add_object)
+
+
+    def get_grasps(self, points):
+         
+        req = GraspPlanningRequest()
+        req.arm_name = "left_arm"
+        req.target.region.cloud = points
+        # TODO: I have no idea what this "graspable object reference frame" thing is. 
+        req.target.reference_frame_id = points.header.frame_id
+    
+        # TODO: should wrap in try/except block
+        res = self.grasp_client(req)
+        return res.grasps
+
+    def show_grasps(self, grasps): 
+        poses = [grasp.grasp_pose.pose for grasp in grasps] 
+        self.draw_functions.clear_grasps()
+        self.draw_functions.draw_grasps(poses, grasps[0].grasp_pose.header.frame_id, pause = 0) 
+
+        
+
 
 # ready -> segment -> bbox + update environment (pass on object name) -> grasps (pass on generated grasps + object name) -> pickup -> drop -> reset
 def main():
