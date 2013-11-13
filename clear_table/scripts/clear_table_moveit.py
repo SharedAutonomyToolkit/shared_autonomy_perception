@@ -3,6 +3,7 @@
 # This is the version of Clear Table that uses Hydro's version of moveit to actually do the pickup tasks
 
 # TODO: clean up service/topic names and turn into parameters! (+ launch file)
+# TODo: parameterize arm name!
 
 import math
 
@@ -15,14 +16,17 @@ import sensor_msgs # for converting point clouds
 import smach
 import smach_ros
 
+# modules imported
+from moveit_commander import MoveGroupCommander
+from object_manipulator import draw_functions
+
+# messages imported
 from actionlib_msgs.msg import GoalStatus
 from manipulation_msgs.srv import GraspPlanning, GraspPlanningRequest
 from moveit_msgs.msg import CollisionObject
 from moveit_msgs.msg import Grasp
 from shape_msgs.msg import SolidPrimitive
-
 from object_manipulation_msgs.srv import FindClusterBoundingBox2, FindClusterBoundingBox2Request
-from object_manipulator import draw_functions
 from sensor_msgs.msg import PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
 from shared_autonomy_msgs.srv import KinectAssembly
@@ -110,7 +114,7 @@ class Segment(smach.State):
 class GenerateGrasps(smach.State):
     def __init__(self):
         smach.State.__init__(self,
-                             outcomes = ['no_grasps'], 
+                             outcomes = ['no_grasps', 'grasps_found'], 
                              input_keys = ['object_points'],
                              output_keys = ['grasps', 'object_name'])
         self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2_3d', FindClusterBoundingBox2)
@@ -163,7 +167,7 @@ class GenerateGrasps(smach.State):
         moveit_grasps = [self.convert_grasp(grasp) for grasp in grasps]
         userdata.grasps = moveit_grasps
 
-        return 'no_grasps'
+        return 'grasps_found'
 
     def convert_grasp(self, grasp):
         """Converts a manipulation_msgs/Grasp into moveit_msgs/Grasp
@@ -177,13 +181,18 @@ class GenerateGrasps(smach.State):
         else:
             hand_joints = ['r_gripper_motor_screw_joint']
 
+        #print 'postures: %0.2f, %0.2f' % (grasp.pre_grasp_posture.position[0], 
+        #                                  grasp.grasp_posture.position[0])
+
         first_point = JointTrajectoryPoint()
-        first_point.positions = [grasp.grasp_posture.position[0]]
+        first_point.positions = [grasp.pre_grasp_posture.position[0]]
         m_grasp.pre_grasp_posture.points.append(first_point)
+        m_grasp.pre_grasp_posture.joint_names = hand_joints
 
         second_point = JointTrajectoryPoint()
-        second_point.positions = [grasp.pre_grasp_posture.position[0]]
+        second_point.positions = [grasp.grasp_posture.position[0]]
         m_grasp.grasp_posture.points.append(second_point)
+        m_grasp.grasp_posture.joint_names = hand_joints
 
         m_grasp.grasp_pose = grasp.grasp_pose
         m_grasp.grasp_quality = grasp.grasp_quality
@@ -198,7 +207,9 @@ class GenerateGrasps(smach.State):
         """ Expects a PoseStamped to be input, along with a Point and string """
         primitive = SolidPrimitive()
         primitive.type = primitive.BOX
-        primitive.dimensions = [dims.x, dims.y, dims.z]
+        # TODO: this is a hack to make the buffer bigger.
+        # By default, it appears to be 10cm x 10cm x 0cm, but I'm not sure which dimension is which
+        primitive.dimensions = [1.2*dims.x, 1.2*dims.y, 1.2*dims.z]
 
         add_object = CollisionObject()
         add_object.id = name
@@ -214,6 +225,18 @@ class GenerateGrasps(smach.State):
         poses = [grasp.grasp_pose.pose for grasp in grasps] 
         self.draw_functions.clear_grasps()
         self.draw_functions.draw_grasps(poses, grasps[0].grasp_pose.header.frame_id, pause = 0) 
+
+class Pickup(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['pickup_failed'],
+                             input_keys=['object_name', 'grasps'])
+        print 'initializing Pickup'
+        self.group = MoveGroupCommander("left_arm")
+
+    def execute(self, userdata):
+        success = self.group.pick(userdata.object_name, grasp=userdata.grasps)
+        print 'pickup success = %r' % (success,)
+        return 'pickup_failed'
 
         
 
@@ -233,10 +256,10 @@ def main():
                                               'no_data':'SEGMENT',
                                               'no_objects':'HOME'})# NYI
         smach.StateMachine.add('GENERATE_GRASPS', GenerateGrasps(),
-                               transitions = {'no_grasps':'HOME'})
-        #                                      'grasp_found':'PICKUP'})
-        #        smach.StateMachine.add('PICKUP', Pickup(),
-        #                               transitions = {'pickup_failed':'HOME',
+                               transitions = {'no_grasps':'HOME', 
+                                              'grasps_found':'PICKUP'})
+        smach.StateMachine.add('PICKUP', Pickup(),
+                               transitions = {'pickup_failed':'HOME'})
         #                                              'pickup_done':'DROP'})
         #        smach.StateMachine.add('DROP', Drop(),
         #                               transitions = {'drop_done':'HOME'})
