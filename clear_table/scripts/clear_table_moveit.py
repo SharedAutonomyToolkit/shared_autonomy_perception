@@ -22,9 +22,9 @@ from object_manipulator import draw_functions
 
 # messages imported
 from actionlib_msgs.msg import GoalStatus
+from geometry_msgs.msg import Pose, PoseStamped, Point
 from manipulation_msgs.srv import GraspPlanning, GraspPlanningRequest
-from moveit_msgs.msg import CollisionObject
-from moveit_msgs.msg import Grasp
+from moveit_msgs.msg import CollisionObject, Grasp, PickupAction, PickupGoal
 from shape_msgs.msg import SolidPrimitive
 from object_manipulation_msgs.srv import FindClusterBoundingBox2, FindClusterBoundingBox2Request
 from sensor_msgs.msg import PointCloud2
@@ -117,7 +117,7 @@ class GenerateGrasps(smach.State):
                              outcomes = ['no_grasps', 'grasps_found'], 
                              input_keys = ['object_points'],
                              output_keys = ['grasps', 'object_name'])
-        self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2_3d', FindClusterBoundingBox2)
+        self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2', FindClusterBoundingBox2)
         self.grasp_client = rospy.ServiceProxy('plan_point_cluster_grasp', GraspPlanning)
 
         self.draw_functions = draw_functions.DrawFunctions('grasp_markers')
@@ -146,7 +146,19 @@ class GenerateGrasps(smach.State):
         object_name = "box1"
         userdata.object_name = object_name
         self.insert_object(bb_resp.pose, bb_resp.box_dims, object_name)
-         
+
+        table_pose = PoseStamped()
+        table_pose.header.frame_id = "odom_combined"
+        table_pose.pose.position.x = 0.55
+        table_pose.pose.position.y = 0.0
+        table_pose.pose.position.z = 0.75
+        table_pose.pose.orientation.w = 1.0
+        table_dims = Point()
+        table_dims.x = 0.7
+        table_dims.y = 1.0
+        table_dims.z = 0.05
+        self.insert_object(table_pose, table_dims, "table")
+
         req = GraspPlanningRequest()
         req.arm_name = "left_arm"
         req.target.region.cloud = userdata.object_points
@@ -209,7 +221,7 @@ class GenerateGrasps(smach.State):
         primitive.type = primitive.BOX
         # TODO: this is a hack to make the buffer bigger.
         # By default, it appears to be 10cm x 10cm x 0cm, but I'm not sure which dimension is which
-        primitive.dimensions = [1.2*dims.x, 1.2*dims.y, 1.2*dims.z]
+        primitive.dimensions = [dims.x, dims.y, dims.z]
 
         add_object = CollisionObject()
         add_object.id = name
@@ -228,17 +240,74 @@ class GenerateGrasps(smach.State):
 
 class Pickup(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['pickup_failed'],
+        smach.State.__init__(self, outcomes=['pickup_failed', 'pickup_done'],
                              input_keys=['object_name', 'grasps'])
         print 'initializing Pickup'
-        self.group = MoveGroupCommander("left_arm")
+        #self.group = MoveGroupCommander("left_arm")
+        self.pickup_client = actionlib.SimpleActionClient('pickup', PickupAction)
+        self.pickup_client.wait_for_server()
 
     def execute(self, userdata):
-        success = self.group.pick(userdata.object_name, grasp=userdata.grasps)
-        print 'pickup success = %r' % (success,)
-        return 'pickup_failed'
+        pickup_goal = PickupGoal()
+        pickup_goal.target_name = userdata.object_name
+        pickup_goal.group_name = "left_arm"
+        pickup_goal.possible_grasps = userdata.grasps
+        pickup_goal.support_surface_name = "table"
+        pickup_goal.allow_gripper_support_collision = True
+        pickup_goal.allowed_planning_time = 30.0
+        # Fill in the goal here
+        self.pickup_client.send_goal(pickup_goal)
+        self.pickup_client.wait_for_result()
+        pickup_result = self.pickup_client.get_result()
+        print 'Pickup result: %d' % (pickup_result.error_code.val,)
 
-        
+        if pickup_result.error_code.val == 1:
+            return 'pickup_done'
+        else:
+            return 'pickup_failed'
+
+        #success = self.group.pick(userdata.object_name, grasp=userdata.grasps)
+        #print 'pickup success = %r' % (success,)
+        #if success:
+        #    return 'pickup_done'
+        #else:
+        #    return 'pickup_failed'
+
+class Drop(smach.State):
+    def __init__(self):
+        smach.State.__init__(self,
+                             outcomes = ['drop_done'],
+                             input_keys = ['object_name'])
+        # TODO: have separate movegroup commanders at the same time? is that OK? 
+        # TODO: parameterize this arm!
+        self.group = MoveGroupCommander("left_arm")
+        self.collision_pub = rospy.Publisher('collision_object', CollisionObject)
+
+    def execute(self, userdata):
+        # TODO: must be better thing to do than just prescripted place where it goes to drop!
+        # TODO: where does the frame get specified here?
+        obj_pose = Pose()
+
+        obj_pose.position.x = 0.45
+        obj_pose.position.y = 0.72
+        obj_pose.position.z = 1.1
+        obj_pose.orientation.w = 1.0
+
+        success = self.group.place(userdata.object_name, obj_pose)
+        if success:
+            self.remove_object(userdata.object_name)
+        else:
+            print 'place failed!'
+
+        return 'drop_done'
+
+    def remove_object(self, name):
+        remove_object = CollisionObject()
+        remove_object.header.frame_id = "odom_combined"
+        remove_object.id = name
+        remove_object.operation = remove_object.REMOVE
+
+        self.collision_pub.publish(remove_object)
 
 
 # ready -> segment -> bbox + update environment (pass on object name) -> grasps (pass on generated grasps + object name) -> pickup -> drop -> reset
@@ -259,10 +328,10 @@ def main():
                                transitions = {'no_grasps':'HOME', 
                                               'grasps_found':'PICKUP'})
         smach.StateMachine.add('PICKUP', Pickup(),
-                               transitions = {'pickup_failed':'HOME'})
-        #                                              'pickup_done':'DROP'})
-        #        smach.StateMachine.add('DROP', Drop(),
-        #                               transitions = {'drop_done':'HOME'})
+                               transitions = {'pickup_failed':'HOME',
+                                              'pickup_done':'DROP'})
+        smach.StateMachine.add('DROP', Drop(),
+                               transitions = {'drop_done':'HOME'})
 
     sis = smach_ros.IntrospectionServer('clear_table_sis', sm, '/SM_ROOT')
     sis.start()
