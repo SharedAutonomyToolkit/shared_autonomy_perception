@@ -15,19 +15,20 @@ import handle_point_cloud2 as pts
 import sensor_msgs # for converting point clouds
 import smach
 import smach_ros
+import tf
 
 # modules imported
-from moveit_commander import MoveGroupCommander
+#from moveit_commander import MoveGroupCommander
 from object_manipulator import draw_functions
 
 # messages imported
 from actionlib_msgs.msg import GoalStatus
-from geometry_msgs.msg import Pose, PoseStamped, Point
+from geometry_msgs.msg import Pose, PoseStamped, Point, Vector3
 from manipulation_msgs.srv import GraspPlanning, GraspPlanningRequest
 from moveit_msgs.msg import CollisionObject, Grasp, PickupAction, PickupGoal
 from shape_msgs.msg import SolidPrimitive
 from object_manipulation_msgs.srv import FindClusterBoundingBox2, FindClusterBoundingBox2Request
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud, PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
 from shared_autonomy_msgs.srv import KinectAssembly
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -117,35 +118,40 @@ class GenerateGrasps(smach.State):
                              outcomes = ['no_grasps', 'grasps_found'], 
                              input_keys = ['object_points'],
                              output_keys = ['grasps', 'object_name'])
-        self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2', FindClusterBoundingBox2)
+        #self.bb_client = rospy.ServiceProxy('/find_cluster_bounding_box2', FindClusterBoundingBox2)
         self.grasp_client = rospy.ServiceProxy('plan_point_cluster_grasp', GraspPlanning)
 
         self.draw_functions = draw_functions.DrawFunctions('grasp_markers')
         self.collision_pub = rospy.Publisher('collision_object', CollisionObject)
 
+        self.listener = tf.TransformListener()
+        self.transformer = tf.TransformerROS()
+
     def execute(self, userdata):
-        print 'waiting for cluster bb server'
-        rospy.wait_for_service('find_cluster_bounding_box2')
-        print '...got service'
+        #print 'waiting for cluster bb server'
+        #rospy.wait_for_service('find_cluster_bounding_box2')
+        #print '...got service'
 
         print 'waiting for cluster grasp planner server'
         rospy.wait_for_service('plan_point_cluster_grasp')
         print '...got service'
-
-        bb_req = FindClusterBoundingBox2Request()
-        bb_req.cluster = userdata.object_points
-
-        try:   
-            bb_resp = self.bb_client(bb_req)
-        except rospy.ServiceException:
-            print 'no response from cluster bb server!'
-            return 'no_grasps'
-
-        print bb_resp
         
-        object_name = "box1"
-        userdata.object_name = object_name
-        self.insert_object(bb_resp.pose, bb_resp.box_dims, object_name)
+        print 'waiting to get transforms!'
+        rr = rospy.Rate(1.0)
+        while ((not self.listener.frameExists("odom_combined") or
+                not self.listener.frameExists(userdata.object_points.header.frame_id)) and 
+               not rospy.is_shutdown()):
+            print self.listener.frameExists("odom_combined")
+            print self.listener.frameExists(userdata.object_points.header.frame_id)
+            rr.sleep()
+        print 'got transforms!'
+        
+        bb = self.get_bounding_box(userdata.object_points)
+        if bb is None:
+            return 'no_grasps'
+        # TODo: this appears multiple places ... 
+        userdata.object_name = "box1"
+
 
         table_pose = PoseStamped()
         table_pose.header.frame_id = "odom_combined"
@@ -180,6 +186,75 @@ class GenerateGrasps(smach.State):
         userdata.grasps = moveit_grasps
 
         return 'grasps_found'
+
+    def get_bounding_box(self, points):
+        world_frame = "odom_combined"
+
+        # get pointcloud in world frame
+        if not self.listener.frameExists(points.header.frame_id):
+            rospy.logerr("point cloud header frame %s does not exist!", points.header.frame_id)
+            return 
+        if not self.listener.frameExists(world_frame):
+            rospy.logerr("world frame %s does not exist!", world_frame)
+            return
+
+
+        pc = PointCloud()
+        pc.header = points.header
+        iter_pt = pts.read_points(points)
+        for pt in iter_pt:
+            pc.points.append(Point(pt[0], pt[1], pt[2]))
+        # TODO: technically, want to transform at time image was taken, but thanks 
+        # to waiting for human input, will be arbitrary delay ... 
+        pc.header.stamp = self.listener.getLatestCommonTime(world_frame, pc.header.frame_id)
+        # TODO: should be wrapped in try/except block
+        pc_world = self.listener.transformPointCloud(world_frame, pc)
+
+        # get world-axis-aligned bounding box
+        min_x = 100.0
+        max_x = -100.0
+        min_y = 100.0
+        max_y = -100.0
+        min_z = 100.0
+        max_z = -100.0
+        for pt in pc_world.points:
+            min_x = min(min_x, pt.x)
+            max_x = max(max_x, pt.x)
+            min_y = min(min_y, pt.y)
+            max_y = max(max_y, pt.y)
+            min_z = min(min_z, pt.z)
+            max_z = max(max_z, pt.z)
+        
+        # add bounding box to the planning scene
+        obj_pose = PoseStamped()
+        obj_pose.pose.position.x = (min_x + max_x)/2
+        obj_pose.pose.position.y = (min_y + max_y)/2
+        obj_pose.pose.position.z = (min_z + max_z)/2
+        obj_pose.pose.orientation.z = 1.0
+
+        obj_pose.header.frame_id = world_frame
+        obj_dims = Vector3()
+        obj_dims.x = max_x - min_x
+        obj_dims.y = max_y - min_y
+        obj_dims.z = max_z - min_z
+
+        obj_name = "box1"
+        self.insert_object(obj_pose, obj_dims, obj_name)
+        # TODO: this is ugly - I'm using the None return type to indicate that this failed ... 
+        return True
+
+        #bb_req = FindClusterBoundingBox2Request()
+        #bb_req.cluster = userdata.object_points
+        #try:   
+        #    bb_resp = self.bb_client(bb_req)
+        #except rospy.ServiceException:
+        #    print 'no response from cluster bb server!'
+        #    return 'no_grasps'
+        #print bb_resp
+        #object_name = "box1"
+        #userdata.object_name = object_name
+        #self.insert_object(bb_resp.pose, bb_resp.box_dims, object_name)
+
 
     def convert_grasp(self, grasp):
         """Converts a manipulation_msgs/Grasp into moveit_msgs/Grasp
@@ -280,7 +355,7 @@ class Drop(smach.State):
                              input_keys = ['object_name'])
         # TODO: have separate movegroup commanders at the same time? is that OK? 
         # TODO: parameterize this arm!
-        self.group = MoveGroupCommander("left_arm")
+        #self.group = MoveGroupCommander("left_arm")
         self.collision_pub = rospy.Publisher('collision_object', CollisionObject)
 
     def execute(self, userdata):
@@ -293,7 +368,8 @@ class Drop(smach.State):
         obj_pose.position.z = 1.1
         obj_pose.orientation.w = 1.0
 
-        success = self.group.place(userdata.object_name, obj_pose)
+        #success = self.group.place(userdata.object_name, obj_pose)
+        success = False
         if success:
             self.remove_object(userdata.object_name)
         else:
