@@ -36,7 +36,7 @@ if __name__=="__main__":
     bag = rosbag.Bag(infile)
     for topic, msg, t in bag.read_messages():
         if topic == "assemble_kinect_response":
-            outfile = outfile_base + str(msg_count) + '.pgm'
+            outfile = outfile_base + '_' + str(msg_count) + '.pgm'
             msg_count = msg_count + 1
             resp = msg
             cv_image = cv_bridge.CvBridge().imgmsg_to_cv(resp.image, "bgr8")
