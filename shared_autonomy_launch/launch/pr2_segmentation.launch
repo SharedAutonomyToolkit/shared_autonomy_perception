@@ -56,10 +56,10 @@
 -->  
 
   <rosparam command="load" file="$(find cluster_grasp_planner)/config/pr2_hand_descriptions.yaml"/>
-  <include file="$(find cluster_grasp_planner)/launch/cluster_grasp_planner_server.launch">
-    <arg name="use_machine" value="false"/> <!-- want to run locally -->
-  </include>
-
-  <node name="cluster_grasps" pkg="cluster_grasp_planner" type="point_cluster_grasp_planner_server.py"/>
+  <node name="cluster_grasps" pkg="cluster_grasp_planner" type="point_cluster_grasp_planner_server.py" output="screen">
+    <rosparam command="load" file="$(find cluster_grasp_planner)/config/pr2_gripper_model.yaml"/>
+    <param name="z_up_frame" value="/base_link"/> <!-- used by object_manipulator; encodes something s.t. grasps are sane -->
+    <param name="backoff_depth_steps" value="8"/>
+  </node>
 
 </launch>

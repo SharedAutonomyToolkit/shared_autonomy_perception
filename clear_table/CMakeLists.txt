@@ -4,7 +4,7 @@ project(clear_table)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS actionlib rospy moveit_msgs sensor_msgs shape_msgs shared_autonomy_msgs smach smach_ros)
+find_package(catkin REQUIRED COMPONENTS actionlib rospy cluster_grasp_planner moveit_msgs sensor_msgs shape_msgs shared_autonomy_msgs smach smach_ros)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
