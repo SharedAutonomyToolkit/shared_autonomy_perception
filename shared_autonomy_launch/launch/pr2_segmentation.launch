@@ -2,11 +2,11 @@
 
   <!-- namespace for the camera that we're listening to. 
   Can't push the openni_launch down into another namespace, so we use this-->
-  <arg name="kinect_name" value="/head_mount_kinect"/>
+  <arg name="kinect_name" default="/head_mount_kinect"/>
   <!-- services that the interactive segmentation uses -->
-  <arg name="segment_service" value="segment_service"/>
-  <arg name="bbox_service" value="get_bounding_box"/>
-  <arg name="pixel_service" value="edit_pixel_labels"/>
+  <arg name="segment_service" default="segment_service"/>
+  <arg name="bbox_service" default="get_bounding_box"/>
+  <arg name="pixel_service" default="edit_pixel_labels"/>
 
   <!-- the kinect's depth and rgb images are not published synchronously.
   This gathers them and provides a service to obtain the most recent set.
@@ -47,25 +47,6 @@
     <param name="ppm" value="100"/>
   </node>
 
-<!--
-  <node name="run_clear_table" pkg="clear_table" type="clear_table_moveit.py" launch-prefix="xterm -e">
-    <remap from="assemble_kinect" to="$(arg kinect_name)/assemble_kinect"/>
-    <remap from="segment_service" to="$(arg segment_service)"/>
-    <param name="data_wait" value="10.0"/>
-  </node>
--->  
 
-<include file="$(find cluster_grasp_planner)/launch/pr2_cluster_grasp_planner.launch">
-  <arg name="use_machine" value="false"/>
-</include>
 
-<!--
-  <node name="cluster_grasps" pkg="cluster_grasp_planner" type="point_cluster_grasp_planner_server.py" output="screen">
-    <rosparam command="load" file="$(find cluster_grasp_planner)/config/pr2_hand_descriptions.yaml"/>
-    <rosparam command="load" file="$(find cluster_grasp_planner)/config/pr2_gripper_model.yaml"/>
-
-    <param name="z_up_frame" value="/base_link"/> 
-    <param name="backoff_depth_steps" value="8"/>
-  </node>
--->
 </launch>
