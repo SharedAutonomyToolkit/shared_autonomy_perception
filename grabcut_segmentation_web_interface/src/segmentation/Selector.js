@@ -74,7 +74,7 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
   }
 
   // grab the initial stream
-//  this.changeStream(topic);
+  this.changeStream(topic);
 //  draw();
   console.log(this.image.src);
 
@@ -88,6 +88,8 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
   var mouseEventHandler = function (event, mouseState){
 		if( mouseState == 'down'){
 			console.log('mouse down');
+      //if mouse is pushed down get the position and save it
+
 			//get position where mouse button is pressed down
 		    clickPosition = { x: event.stageX, y:  event.stageY};
 		    
@@ -95,27 +97,20 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 			position = that.stage.globalToRos(event.stageX, event.stageY);
         	        positionVec3 = new ROSLIB.Vector3(position);
         	    
-/*		    //remove previous rectangle
-        	    if (rect){
-			that.stage.removeChild(rect);
-			rect = null;
-		    }
-		    //create new rectangle
-		    console.log(position);
-		       rect = new createjs.Shape();
-		       rect.graphics.beginStroke("#F00");
-		       rect.graphics.drawRect(position.x, -position.y, 10, 10);
+		    //remove previous rectangle
+      if (rect){
+        console.log('removing recct')
+			 that.stage.removeChild(rect);
+			 rect = null;
+       that.stage.update();
+		  }
 
-
-		    that.stage.addChild(rect);
-		    that.stage.update();//new createjs.Rectangle(position.x, position.y, 100, 100);
-		    */
-		    mouseDown = true;
+		  mouseDown = true;
 
 		}
 
-      else if (mouseState === 'move') {
-	  if (mouseDown === true) {
+    else if (mouseState === 'move') {
+      if (mouseDown === true) {
 	     //if mouse button is held down:
 	      //get the current mouse position
 	      //calculate distance from start position
@@ -126,14 +121,14 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 
 	      var squareStart = {x: clickPosition.x, y: clickPosition.y};
 	      
-	      //calculate positions
+	      //calculate positions and rectangle information
 	      if(clickPosition.x > currentClick.x)
 	      {
-		  squareStart.x = currentClick.x;
+		      squareStart.x = currentClick.x;
 	      }
 	      if(clickPosition.y > currentClick.y)
 	      {
-		  squareStart.y = currentClick.y;
+    		  squareStart.y = currentClick.y;
 	      }
 
 	      var distancex = Math.abs(clickPosition.x - currentClick.x);
@@ -143,11 +138,9 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 	      console.log(currentClick);
 	      //remove old rec so we can draw a new one
 	      if(rect) {
-		  that.stage.removeChild(rect);
-		  rect = null;
+		      that.stage.removeChild(rect);
+		      rect = null;
 	      }
-	      
-
 
 	      rect = new createjs.Shape();
 	      rect.graphics.beginStroke("#F00");
@@ -166,21 +159,10 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 	  
       }
 
-
-		/* if(mouseDown ===true) {
-      	//if the mouse button is held down:
-      	//get the current mouse positon
-      	//calculate distance from start position
-
-      	var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
-        var currentPosVec3 = new ROSLIB.Vector3(currentPos);
-
-
-      }*/
   };
 
 
-
+  //set up callbacks for the canvas
 	this.stage.addEventListener('stagemousedown', function(event) {
       mouseEventHandler(event,'down');
 
@@ -217,4 +199,10 @@ GRABCUTSEGMENTATIONLIB.Selector.prototype.changeStream = function(topic) {
   this.image.src = src;
   // emit an event for the change
   this.emit('change', topic);
+
+  //trying out bitmap easel thing
+  var imagebitmap = new createjs.Bitmap(this.image);
+  console.log('bitmap');
+  console.log(imagebitmap);
+  this.stage.addChild(imagebitmap);
 };

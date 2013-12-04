@@ -3,17 +3,20 @@
 <head>
 <meta charset="UTF-8">
 
-<link rel="stylesheet" type="text/css"
-  href="http://code.jquery.com/ui/1.10.3/jquery-ui.js" />
+<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/jquery-ui.js" />
+ <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+<script type="text/javascript"  src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
 
-<script type="text/javascript"
-  src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="http://code.createjs.com/easeljs-0.7.0.min.js"></script>
 
 
 <script type="text/javascript" src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
 <script type="text/javascript" src="http://cdn.robotwebtools.org/mjpegcanvasjs/current/mjpegcanvas.min.js"></script>
 <script type="text/javascript" src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
-<script type="text/javascript" src="../build/robot2020lib.js"></script>
+<script type="text/javascript" src="http://cdn.robotwebtools.org/ros2djs/current/ros2d.js"></script>
+
+<script type="text/javascript" src="../build/grabcutsegmentationlib.js"></script> 
 
 <script type="text/javascript">
 /**
@@ -22,58 +25,43 @@
 function init() {
   // Connecting to ROS.
   var ros = new ROSLIB.Ros({
-    url : 'ws://localhost:9090'
+    url : 'ws://sam:9090'
   });
 
-  // Initialize the teleop.
-  var teleop = new ROBOT2020LIB.KeyboardTeleop({
-    ros : ros,
-    topic : '/teleop_cmd_vel'
-  });
 
-  var joystick_teleop = new ROBOT2020LIB.Joystick({
-    ros : ros,
-    topic : '/teleop_cmd_vel',
-    targetId : 'joystick-holder'
-  });
 
   // Create the main viewer.
   var viewer = new MJPEGCANVAS.Viewer({
     divID : 'mjpeg',
-    host : 'localhost',
+    host : 'sam',
     width : 640,
     height : 480,
-    topic : '/camera/rgb/image_rect_color_throttled'
+    topic : '/kinect_image'
   });
 
-/**    // Create a UI slider using JQuery UI.
-    $('#speed-slider').slider({
-      range : 'min',
-      min : 0,
-      max : 100,
-      value : 90,
-      slide : function(event, ui) {
-        // Change the speed label.
-        $('#speed-label').html('Speed: ' + ui.value + '%');
-        // Scale the speed.
-        teleop.scale = (ui.value / 100.0);
-      }
-    });
 
-    // Set the initial speed .
-    $('#speed-label').html('Speed: ' + ($('#speed-slider').slider('value')) + '%');
-    teleop.scale = ($('#speed-slider').slider('value') / 100.0);
-*/
+  //Create the a grabcut segmentation widget
+  var segmenter= new GRABCUTSEGMENTATIONLIB.Segmenter({
+    ros : ros, 
+    cameraTopic : '/kinect_image',
+    editTopic : '/kinect_image_fake',
+    segmentationDiv : 'image-segmentation-window',
+    editDiv : 'edit-segmentation-window',
+    canvasWidth : 640,
+    canvasHeight : 480
+
+  });
+
 }
 </script>
 </head>
 
 <body onload="init()">
-  <h1>Turtlebot2 Teleop</h1>
+  <h1>Interactive Segmentation</h1>
   <div id="mjpeg"></div>
 
-  <div id="joystick-holder" style="width: 200px; height: 200px; border: solid 2px black;"></div>
-<!--  <div id="speed-label"></div>
-  <div id="speed-slider"></div>-->
+  <div id="image-segmentation-window"></div>
+  <div id="edit-segmentation-window"></div>
+
 </body>
 </html>
