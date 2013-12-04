@@ -30,6 +30,7 @@ def callback(data):
         else:
             continue
 
+
         
         #table to camera transform
         br.sendTransform((pose.pose.position.x, pose.pose.position.y, pose.pose.position.z),
