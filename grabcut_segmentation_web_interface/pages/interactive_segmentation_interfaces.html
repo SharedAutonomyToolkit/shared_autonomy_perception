@@ -25,7 +25,7 @@
 function init() {
   // Connecting to ROS.
   var ros = new ROSLIB.Ros({
-    url : 'ws://sam:9090'
+    url : 'ws://localhost:9090'
   });
 
 
@@ -33,7 +33,7 @@ function init() {
   // Create the main viewer.
   var viewer = new MJPEGCANVAS.Viewer({
     divID : 'mjpeg',
-    host : 'sam',
+    host : 'localhost',
     width : 640,
     height : 480,
     topic : '/kinect_image'
@@ -43,6 +43,7 @@ function init() {
   //Create the a grabcut segmentation widget
   var segmenter= new GRABCUTSEGMENTATIONLIB.Segmenter({
     ros : ros, 
+    host : 'localhost',
     cameraTopic : '/kinect_image',
     editTopic : '/kinect_image_fake',
     segmentationDiv : 'image-segmentation-window',

@@ -4,6 +4,19 @@ robot2020lib.js
 ### Usage
 Pre-built files can be found in [robot2020lib.js](build/robot2020lib.js) or [robot2020lib.min.js](build/robot2020lib.min.js).
 
+To run an example:
+
+You must have downloaded rosbridge_server and mjpeg_server
+
+1) rosrun rosbridge_server rosbridge_websocket
+2) rosrun mjpeg_server mjpeg_server
+3) in the directory of this package run: python -m SimpleHTTPServer
+
+Note: this assumes that the computer that is serving the page is the computer that you are on.  If this is not the case you will need to edit pages/interactive_segmentation_interfaces.html to have the properhost name (look for localhost and replace with your computer name)
+
+Open your web browser: localhost:8000/pages/interactive_segmentation_interfaces.html
+
+
 ### Dependencies
 robot2020lib.js depends on:
 

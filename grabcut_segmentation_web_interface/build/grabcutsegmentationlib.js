@@ -18,6 +18,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	var that = this;
 	options = options || {};
 	var ros = options.ros;
+        var host = options.host || 'localhost';
 	var cameraTopic = options.cameraTopic;
 	var editTopic = options.editTopic;
 	this.segmentationDiv = $('#' + options.segmentationDiv);
@@ -51,16 +52,16 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
 	var segmentationViewer = new GRABCUTSEGMENTATIONLIB.Selector({
     	divID : segmentationCanvasId,
-    	host : 'sam',
+    	host : host,
     	width : canvasWidth,
     	height : canvasHeight,
     	topic : cameraTopic
   	});
 
-
+    //todo change this to edit object
 	var editViewer = new MJPEGCANVAS.Viewer({
     	divID : editCanvasId,
-   		host : 'sam',
+   		host : host,
     	width : canvasWidth,
     	height : canvasHeight,
     	topic : editTopic
