@@ -168,6 +168,6 @@ class SceneHandler():
     def clear_scene(self):
         ps = PlanningSceneWorld()
         ps.octomap.header.frame_id = 'odom_combined'
-        ps.octomap.octomap.data.append(0) #TOTAL HACK. I have no clue what this actually does ...
+        #ps.octomap.octomap.data.append(0) #TOTAL HACK. I have no clue what this actually does ...
         ps.octomap.octomap.id = 'OcTree'
         self.scene_diff_pub.publish(ps)
