@@ -70,7 +70,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 		messageType : 'sensor_msgs/Image'
 	});
 
-	console.log(cameraListener);
+    //console.log(cameraListener);
 	
 	cameraListener.subscribe(function(message){
 		that.widgetState = 'segment';
@@ -91,6 +91,8 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 		.click(function(event){
 			console.log("clicked segmentation button - testing");
             console.log("testing...");
+            var bounds = segmentationViewer.getbounds();
+            console.log(bounds);
 		});
 
 	$('#grabcut-reset')

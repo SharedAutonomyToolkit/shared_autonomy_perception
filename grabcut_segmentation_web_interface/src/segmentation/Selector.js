@@ -36,8 +36,8 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 
 
     this.stage = new createjs.Stage(this.canvas);
-    console.log(this.canvas);
-    console.log(this.stage);
+    //console.log(this.canvas);
+    //console.log(this.stage);
     var context = this.canvas.getContext('2d');
 
     this.canvas.style.background = '#aaaaaa';
@@ -76,14 +76,15 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
     // grab the initial stream
     this.changeStream(topic);
     //  draw();
-    console.log(this.image.src);
+    //console.log(this.image.src);
 
 
     var mouseDown = false;
     var clickPosition = null;
     var position = null;
     var positonVec3 = null;
-    var rect = null;  
+    var rect = null;
+    //var this.bounds = null;
 
     var mouseEventHandler = function (event, mouseState){
 		if( mouseState == 'down'){
@@ -145,6 +146,7 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 	            rect = new createjs.Shape();
 	            rect.graphics.beginStroke("#F00");
 	            rect.graphics.drawRect(squareStart.x, squareStart.y, distancex, distancey);
+                that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
 
 	            that.stage.addChild(rect);
 	            that.stage.update();
@@ -154,7 +156,8 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
         else { //mouseState === 'up'
 	        //if mouse button is released
 	        //stop updating square
-
+            console.log("and, printing bounds in the mouse function");
+            console.log(that.bounds);
 	        mouseDown = false;
 	        
         }
@@ -165,8 +168,6 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
     //set up callbacks for the canvas
 	this.stage.addEventListener('stagemousedown', function(event) {
         mouseEventHandler(event,'down');
-
-
     });
 
     this.stage.addEventListener('stagemousemove', function(event) {
@@ -178,6 +179,11 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
     });
 };
 
+GRABCUTSEGMENTATIONLIB.Selector.prototype.getbounds = function(topic) {
+    console.log("printing bounds in the getbounds() fxn");
+    console.log(this.bounds);
+    return this.bounds;
+}
 
 GRABCUTSEGMENTATIONLIB.Selector.prototype.__proto__ = EventEmitter2.prototype;
 
