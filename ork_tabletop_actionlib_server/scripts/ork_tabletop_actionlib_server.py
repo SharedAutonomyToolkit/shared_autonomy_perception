@@ -103,7 +103,7 @@ class ORKTabletop(object):
 #        rospy.sleep(2.0)
         self.pub.publish(pc)
         self.cloud_list.append(pc)
-        rospy.loginfo("cluster size %d", cloud_list.__len__())    
+        rospy.loginfo("cluster size %d", self.cloud_list.__len__())    
    
   def execute_cb(self, goal):
     with self.lock:
