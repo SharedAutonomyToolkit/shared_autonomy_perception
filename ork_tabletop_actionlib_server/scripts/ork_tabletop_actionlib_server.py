@@ -5,6 +5,7 @@ from object_recognition_msgs.msg import RecognizedObjectArray
 from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import PoseStamped
 from visualization_msgs.msg import MarkerArray
+import tf.transformations as trans
 
 pub = rospy.Publisher('/recognized_object_array_as_point_cloud', PointCloud2)
 pose_pub = rospy.Publisher('/recognized_object_array_as_pose_stamped', PoseStamped)
@@ -29,12 +30,14 @@ def callback(data):
             pose_pub.publish(pose)
         else:
             continue
-
-
         
+        q1 =[pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w]
+        q2 = trans.quaternion_about_axis(1.57, (0, 1, 0))
+        q3 = trans.quaternion_multiply(q1,q2)
         #table to camera transform
         br.sendTransform((pose.pose.position.x, pose.pose.position.y, pose.pose.position.z),
-                        (pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w),
+#                        (pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w),
+                         (q3[0], q3[1], q3[2], q3[3]),
                          rospy.Time.now(),
                          "table_link",
                          ma.markers[0].header.frame_id)
