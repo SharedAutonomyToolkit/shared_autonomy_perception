@@ -11,6 +11,7 @@
 
 GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	var that = this;
+
 	options = options || {};
 	var ros = options.ros;
     var host = options.host || 'localhost';
@@ -20,20 +21,18 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	this.editDiv = $('#' + options.editDiv);
 	var canvasWidth = options.canvasWidth;
 	var canvasHeight = options.canvasHeight;
+
 	this.widgetState = 'segement';
-	
 	this.Lock = false;
 
 	var segmentationCanvasId = 'grabcut-segmentation-canvas';
 	var editCanvasId = 'grabcut-edit-canvas';
 
 	//add canvas and buttons to the window
-
 	this.segmentationDiv.dialog({
 		autoOpen : false,
 		width : canvasWidth,
 		height : canvasHeight
-
 	});
 	
 	this.editDiv.dialog({
@@ -42,8 +41,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
 	this.segmentationDiv.html('<div id="' + segmentationCanvasId + '"><\/div> <br> <br><button id="grabcut-segmentation">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
 	this.editDiv.html( '<div id="' + editCanvasId +  '"><\/div> <br><br><button id="grabcut-edit-segmentation">Send</button> <button id="grabcut-edit-reset">Reset</button>');
-    //	this.segmentationDiv.html('<canvas id="' + segmentationCanvasId + '" width="' + canvasWidth + '" height="' + canvasHeight + '"><\/canvas> <br> <br><button id="grabcut-segmentation">Segment</button> <button id="grabcut-reset">Reset</button>'); 
-    //	this.editDiv.html( '<canvas id="' + editCanvasId + '" width="' + canvasWidth + '" height="' + canvasHeight + '"><\/canvas> <br><br><button id="grabcut-edit-segmentation">Send</button> <button id="grabcut-edit-reset">Reset</button>');
 
 	var segmentationViewer = new GRABCUTSEGMENTATIONLIB.Selector({
     	divID : segmentationCanvasId,
@@ -70,22 +67,23 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 		messageType : 'sensor_msgs/Image'
 	});
 
+    var boundsPublisher = new ROSLIB.Topic({
+        ros : ros,
+        name : "/bbox",
+        messageType : "shared_autonomy_msgs/BoundingBox"
+    });
+
     //console.log(cameraListener);
 	
 	cameraListener.subscribe(function(message){
 		that.widgetState = 'segment';
 		console.log('cameramessage');
-
-		//get canvas
-
-        //		var stage = new createjs.Stage();
+        // TODO: seems like this should only happen on the first? 
+        // or do subsequent calls update the image?
 		that.segmentationDiv.dialog("open");
-
 	});
 
-
 	//setup camera button callbacks
-
 	$('#grabcut-segmentation')
 		.button()
 		.click(function(event){
@@ -93,6 +91,16 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
             console.log("testing...");
             var bounds = segmentationViewer.getbounds();
             console.log(bounds);
+
+            var msg = new ROSLIB.Message({
+                min_row : Math.round(bounds.y),
+                max_row : Math.round(bounds.y + bounds.dy),
+                min_col : Math.round(bounds.x),
+                max_col : Math.round(bounds.x + bounds.dx)
+            });
+            boundsPublisher.publish(msg);
+            console.log("just published: ");
+            console.log(msg);
 		});
 
 	$('#grabcut-reset')
