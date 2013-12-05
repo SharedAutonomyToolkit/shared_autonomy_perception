@@ -8,6 +8,13 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   rospy
   actionlib_msgs
+  object_recognition_msgs
+  visualization_msgs
+  sensor_msgs
+  geometry_msgs
+  tf
+  actionlib_msgs
+  shared_autonomy_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -17,7 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -58,16 +65,16 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate actions in the 'action' folder
-add_action_files(
-  DIRECTORY action
-  FILES
-  tabletop.action
-)
+# add_action_files(
+#   DIRECTORY action
+#   FILES
+#   tabletop.action
+# )
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  actionlib_msgs std_msgs  object_recognition_msgs sensor_msgs geometry_msgs visualization_msgs # Or other packages containing msgs
+  actionlib_msgs object_recognition_msgs sensor_msgs geometry_msgs visualization_msgs actionlib shared_autonomy_msgs# Or other packages containing msgs
 )
 
 ###################################
@@ -82,7 +89,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ork_tabletop_actionlib_server
-  CATKIN_DEPENDS actionlib_msgs
+  CATKIN_DEPENDS actionlib_msgs object_recognition_msgs sensor_msgs geometry_msgs visualization_msgs actionlib shared_autonomy_msgs
 #  DEPENDS system_lib
 )
 
@@ -161,3 +168,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+# install(DIRECTORY ${CATKIN_DEVEL_PREFIX}/${PYTHON_INSTALL_DIR}/ork_tabletop_actionlib_server/msg
+#   DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_INSTALL_DIR}/ork_tabletop_actionlib_server)
+# install(DIRECTORY ${CATKIN_DEVEL_PREFIX}/${PYTHON_INSTALL_DIR}/ork_tabletop_actionlib_server/action
+#   DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_INSTALL_DIR}/ork_tabletop_actionlib_server)
