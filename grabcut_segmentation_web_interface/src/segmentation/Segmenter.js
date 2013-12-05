@@ -13,7 +13,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	var that = this;
 	options = options || {};
 	var ros = options.ros;
-        var host = options.host || 'localhost';
+    var host = options.host || 'localhost';
 	var cameraTopic = options.cameraTopic;
 	var editTopic = options.editTopic;
 	this.segmentationDiv = $('#' + options.segmentationDiv);
@@ -42,8 +42,8 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
 	this.segmentationDiv.html('<div id="' + segmentationCanvasId + '"><\/div> <br> <br><button id="grabcut-segmentation">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
 	this.editDiv.html( '<div id="' + editCanvasId +  '"><\/div> <br><br><button id="grabcut-edit-segmentation">Send</button> <button id="grabcut-edit-reset">Reset</button>');
-//	this.segmentationDiv.html('<canvas id="' + segmentationCanvasId + '" width="' + canvasWidth + '" height="' + canvasHeight + '"><\/canvas> <br> <br><button id="grabcut-segmentation">Segment</button> <button id="grabcut-reset">Reset</button>'); 
-//	this.editDiv.html( '<canvas id="' + editCanvasId + '" width="' + canvasWidth + '" height="' + canvasHeight + '"><\/canvas> <br><br><button id="grabcut-edit-segmentation">Send</button> <button id="grabcut-edit-reset">Reset</button>');
+    //	this.segmentationDiv.html('<canvas id="' + segmentationCanvasId + '" width="' + canvasWidth + '" height="' + canvasHeight + '"><\/canvas> <br> <br><button id="grabcut-segmentation">Segment</button> <button id="grabcut-reset">Reset</button>'); 
+    //	this.editDiv.html( '<canvas id="' + editCanvasId + '" width="' + canvasWidth + '" height="' + canvasHeight + '"><\/canvas> <br><br><button id="grabcut-edit-segmentation">Send</button> <button id="grabcut-edit-reset">Reset</button>');
 
 	var segmentationViewer = new GRABCUTSEGMENTATIONLIB.Selector({
     	divID : segmentationCanvasId,
@@ -78,7 +78,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
 		//get canvas
 
-//		var stage = new createjs.Stage();
+        //		var stage = new createjs.Stage();
 		that.segmentationDiv.dialog("open");
 
 	});
@@ -89,7 +89,8 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	$('#grabcut-segmentation')
 		.button()
 		.click(function(event){
-			console.log("clicked segmentation button");
+			console.log("clicked segmentation button - testing");
+            console.log("testing...");
 		});
 
 	$('#grabcut-reset')
