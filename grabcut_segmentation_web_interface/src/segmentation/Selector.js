@@ -95,6 +95,7 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 	            var currentClick={x: event.stageX, y: event.stageY};
 
                 // TODO: these vars are currently unused. 
+                // Sarah says that this magically maps coordinates to ROS coordinates =)
 	            var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
 	            currentPosVec3 = new ROSLIB.Vector3(currentPos);
 
