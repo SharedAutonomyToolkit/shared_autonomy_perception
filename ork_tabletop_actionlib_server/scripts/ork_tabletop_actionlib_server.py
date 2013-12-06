@@ -164,7 +164,7 @@ class ORKTabletop(object):
       
       if success:
         self._result.table_pose = self.centroid_table_pose
-        self._result.table_dims = self.table_dims
+        self._result.table_dims = self.table_dim
         self._result.objects = self.cloud_list  
         rospy.loginfo('%s: Succeeded' % self._action_name)
         self._as.set_succeeded(self._result)

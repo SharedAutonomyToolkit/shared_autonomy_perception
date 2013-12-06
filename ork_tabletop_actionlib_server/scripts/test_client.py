@@ -35,6 +35,6 @@ if __name__ == '__main__':
         # publish and subscribe over ROS.
         rospy.init_node('tabletop_client_py')
         result = tabletop_client()
-        print "Result:", result.table_pose, result.p1, result.p2, result.p3, result.p4,result.objects.__len__() 
+        print "Result:", result.table_pose, result.table_dims, result.objects.__len__() 
     except rospy.ROSInterruptException:
         print "program interrupted before completion"
