@@ -1,0 +1,185 @@
+diff --git a/conf/detection.object.ros.ork b/conf/detection.object.ros.ork
+index 2c63d6f..22fb395 100644
+--- a/conf/detection.object.ros.ork
++++ b/conf/detection.object.ros.ork
+@@ -5,11 +5,10 @@ source1:
+   # Example parameters to set (the default settings are using the ros topics starting with /camera/....) 
+   #  
+   parameters:
+-    #rgb_frame_id: camera_rgb_optical_frame
+-    rgb_image_topic: camera_rgb_image_rect_color
+-    rgb_camera_info: camera_rgb_camera_info
+-    depth_image_topic: camera_depth_registered_image_rect
+-    depth_camera_info: camera_depth_registered_camera_info
++    rgb_image_topic: '/head_mount_kinect/rgb/image_rect_color'
++    rgb_camera_info: '/head_mount_kinect/rgb/camera_info'
++    depth_image_topic: '/head_mount_kinect/depth_registered/image_raw'
++    depth_camera_info: '/head_mount_kinect/depth_registered/camera_info'
+     #
+     #crop_enabled: True
+     #x_min: -0.4
+@@ -39,9 +38,11 @@ pipeline1:
+     table_detector:
+         min_table_size: 4000
+         plane_threshold: 0.01
++        robot_frame: 'base_link'
++        sensor_frame: 'head_mount_kinect_rgb_optical_frame'
+     #clusterer:
+-    #    table_z_filter_max: 0.35
+-    #    table_z_filter_min: 0.025
++     #   table_z_filter_max: 1.0
++     #   table_z_filter_min: 0.5
+ 
+ pipeline2:
+   type: TabletopObjectDetector
+@@ -53,9 +54,9 @@ pipeline2:
+     tabletop_object_ids: 'REDUCED_MODEL_SET'
+     db:
+       type: 'ObjectDbSqlHousehold'
+-      host: 'wgs36'
++      host: 'beorn'
+       port: 5432
+-      user: 'willow'
+-      password: 'willow'
++      user: 'bosch'
++      password: 'bosch'
+       name: 'household_objects'
+       module: 'object_recognition_tabletop'
+diff --git a/conf/detection.table.ros.ork b/conf/detection.table.ros.ork
+index 6551afc..0e33366 100644
+--- a/conf/detection.table.ros.ork
++++ b/conf/detection.table.ros.ork
+@@ -4,12 +4,11 @@ source1:
+   #
+   # Example parameters to set (the default settings are using the ros topics starting with /camera/....) 
+   #  
+-  #parameters:
+-    #rgb_frame_id: '/kinect_head_rgb_optical_frame'
+-    #rgb_image_topic: '/kinect_head/rgb/image_rect_color'
+-    #rgb_camera_info: '/kinect_head/rgb/camera_info'
+-    #depth_image_topic: '/kinect_head/depth_registered/image_rect'
+-    #depth_camera_info: '/kinect_head/depth_registered/camera_info'
++  parameters:
++    rgb_image_topic: '/head_mount_kinect/rgb/image_rect_color'
++    rgb_camera_info: '/head_mount_kinect/rgb/camera_info'
++    depth_image_topic: '/head_mount_kinect/depth_registered/image_raw'
++    depth_camera_info: '/head_mount_kinect/depth_registered/camera_info'
+     #
+     #crop_enabled: True
+     #x_min: -0.4
+@@ -33,6 +32,8 @@ pipeline1:
+     table_detector:
+       min_table_size: 4000
+       plane_threshold: 0.01
++      robot_frame: 'base_link'
++      sensor_frame: 'head_mount_kinect_rgb_optical_frame'
+     #clusterer:
+     #  table_z_filter_max: 0.35
+     #  table_z_filter_min: 0.025
+diff --git a/launch/table.launch b/launch/table.launch
+index f8ae294..4d65856 100644
+--- a/launch/table.launch
++++ b/launch/table.launch
+@@ -1,8 +1,10 @@
+ <launch>
+-  <node pkg="object_recognition_core" type="detection" name="table_finder" args="-c $(find object_recognition_tabletop)/conf/config_detection.tabletop_table" output="screen">
+-    <remap from="camera_rgb_camera_info" to="/head_mount_kinect/rgb/camera_info"/>
+-    <remap from="camera_rgb_image_rect_color" to="/head_mount_kinect/rgb/image_rect_color"/>
+-    <remap from="camera_depth_registered_camera_info" to="/head_mount_kinect/depth_registered/camera_info"/>
+-    <remap from="camera_depth_registered_image_rect" to="/head_mount_kinect/depth_registered/image_rect"/>
++  <node pkg="object_recognition_core" type="detection" name="table_finder" args="-c $(find object_recognition_tabletop)/conf/detection.table.ros.ork">
++    <!-- <remap from="camera_rgb_camera_info" to="/head_mount_kinect/rgb/camera_info"/> -->
++    <!-- <remap from="camera_rgb_image_rect_color" to="/head_mount_kinect/rgb/image_rect_color"/> -->
++    <!-- <remap from="camera_depth_registered_camera_info" to="/head_mount_kinect/depth_registered/camera_info"/> -->
++    <!-- <remap from="camera_depth_registered_image_rect" to="/head_mount_kinect/depth_registered/image_rect"/> -->
++    <param name="robot_frame" value="camera_link"/>
++    <param name="sensor_frame" value="camera_depth_optical_frame"/>
+   </node>
+ </launch>
+diff --git a/src/table/TableDetector.cpp b/src/table/TableDetector.cpp
+index c79096b..8ab7e9e 100644
+--- a/src/table/TableDetector.cpp
++++ b/src/table/TableDetector.cpp
+@@ -58,7 +58,9 @@ namespace tabletop
+                      "The distance used as a threshold when finding a plane", 0.02);
+       params.declare(&TableDetector::table_cluster_tolerance_, "table_cluster_tolerance",
+                      "The distance used when clustering a plane", 0.2);
+-      params.declare(&TableDetector::up_frame_id_, "vertical_frame_id", "The vertical frame id", "/map");
++      params.declare(&TableDetector::up_frame_id_, "vertical_frame_id", "The vertical frame id", "/base_link");
++      params.declare(&TableDetector::robot_frame_, "robot_frame", "The robot frame", "base_link");
++      params.declare(&TableDetector::sensor_frame_, "sensor_frame", "The sensor frame", "head_mount_kinect_rgb_optical_frame");
+     }
+ 
+     static void
+@@ -79,7 +81,7 @@ namespace tabletop
+       ros::NodeHandle nh("~");
+       nh.param("filter_planes", filter_planes_, true);
+       nh.param("min_table_height", min_table_height_, 0.5);
+-      nh.param("max_table_height", max_table_height_, 1.0);
++      nh.param("max_table_height", max_table_height_, 0.7);
+       nh.param("robot_frame", robot_frame_id_, std::string("/base_link"));
+       nh.param("sensor_frame", sensor_frame_id_, std::string("/head_mount_kinect_rgb_optical_frame"));
+ 
+@@ -96,7 +98,7 @@ namespace tabletop
+ 
+       axis_ = tf::Vector3 (table_normal_x, table_normal_y, table_normal_z);
+       std::cout << __LINE__ << " :: " << min_table_height_ << " , " << max_table_height_ << " , " << min_angle_cos_
+-                << " , " << robot_frame_id_ << " , " << sensor_frame_id_ << std::endl;
++                << " , " << *robot_frame_ << " , " << *sensor_frame_ << std::endl;
+     }
+ 
+   /** Get the 2d keypoints and figure out their 3D position from the depth map
+@@ -107,9 +109,10 @@ namespace tabletop
+   int
+   process(const tendrils& inputs, const tendrils& outputs)
+   {
++    std::cerr << "TableDetector: in process" << std::endl;
+     clouds_hull_->clear();
+     table_coefficients_->clear();
+-    if (!filter_planes_ || tf_->waitForTransform(robot_frame_id_, sensor_frame_id_, ros::Time(0), ros::Duration(0.5)))
++    if (!filter_planes_ || tf_->waitForTransform(*robot_frame_, *sensor_frame_, ros::Time(0), ros::Duration(0.5)))
+     {
+       if ((points3d_->rows != prev_image_rows_) || (points3d_->cols != prev_image_cols_))
+       {
+@@ -139,7 +142,7 @@ namespace tabletop
+       {
+         valid_planes = std::vector<bool>(plane_coefficients.size(), false);
+         tf::StampedTransform transform;
+-        tf_->lookupTransform(robot_frame_id_, sensor_frame_id_,ros::Time(0), transform);
++        tf_->lookupTransform(*robot_frame_, *sensor_frame_,ros::Time(0), transform);
+         tf::Matrix3x3 basis = transform.getBasis();
+         tf::Vector3 origin = transform.getOrigin();
+ 
+@@ -150,8 +153,12 @@ namespace tabletop
+ 
+           tf::Vector3 normal_ = basis * normal;
+           double dist_ = normal_.dot (origin) - dist;
+-          if (normal_.dot(axis_) >= min_angle_cos_ && dist_ >= min_table_height_ && dist_ <= max_table_height_)
++	  std::cerr << "dist: " << dist_ << " " << "min_angle_cos_: " << min_angle_cos_ << std::endl;
++	  std::cerr << "min_table_height_: " << min_table_height_ << " " << "max_table_height_: " << max_table_height_ << std::endl;
++	  //          if (normal_.dot(axis_) >= min_angle_cos_ && dist_ >= min_table_height_ && dist_ <= max_table_height_)
++	  if (dist_ >= min_table_height_ && dist_ <= max_table_height_)
+           {
++	    std::cerr << "valid_plane_count: " << valid_plane_count << std::endl;
+             valid_planes [pIdx] = true;
+             ++valid_plane_count;
+           }
+@@ -163,6 +170,7 @@ namespace tabletop
+         valid_plane_count = plane_coefficients.size();
+       }
+ 
++      std::cerr << "valid_plane_count: " << valid_plane_count << std::endl;
+       if (valid_plane_count > 0)
+       {
+         // Figure out the points of each plane
+@@ -259,6 +267,10 @@ namespace tabletop
+     /** The frame id of the vertical direction */
+     ecto::spore<std::string> up_frame_id_;
+ 
++    ecto::spore<std::string> robot_frame_;
++
++    ecto::spore<std::string> sensor_frame_;
++
+     ecto::spore<float> table_cluster_tolerance_;
+ 
+     /** Cache the size of the previous image */
