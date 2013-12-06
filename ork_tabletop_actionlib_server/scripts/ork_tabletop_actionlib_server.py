@@ -29,6 +29,7 @@ class ORKTabletop(object):
     self.sub = rospy.Subscriber("/recognized_object_array", RecognizedObjectArray, self.callback)
     self.pub = rospy.Publisher('/recognized_object_array_as_point_cloud', PointCloud2)
     self.pose_pub = rospy.Publisher('/recognized_object_array_as_pose_stamped', PoseStamped)
+    self.table_topic = "/marker_tables"
     self.br = tf.TransformBroadcaster()
     self.table_pose = PoseStamped()
     self.centroid_table_pose = PoseStamped()
@@ -45,7 +46,7 @@ class ORKTabletop(object):
     rospy.loginfo("Objects %d", data.objects.__len__())
 
     #table_offset and table_pose
-    to = rospy.wait_for_message("/marker_tables", MarkerArray);
+    to = rospy.wait_for_message(self.table_topic, MarkerArray);
     rospy.loginfo("Tables hull size %d", to.markers.__len__())
     if to.markers.__len__() > 0:
         self.point_list = []
@@ -119,12 +120,8 @@ class ORKTabletop(object):
         pc = PointCloud2()
         pc = data.objects[i].point_clouds[0]
 
-        arr = pointclouds.pointcloud2_to_array(pc)
-#        print "arr: ", arr
+        arr = pointclouds.pointcloud2_to_array(pc, 1)
         arr_xyz = pointclouds.get_xyz_points(arr)
-#        print "arr_xyz: ", np.array([arr_xyz[0]])
-#        pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([[1.0, 1.0, 1.0]]), rospy.Time.now(), 'table_link')
-#        pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([[1.0, 1.0, 1.0]]), rospy.Time.now(), 'table_link')
 
         arr_xyz_trans = []
         for j in range (arr_xyz.__len__()):
@@ -134,22 +131,18 @@ class ORKTabletop(object):
           ps.point.x = arr_xyz[j][0]
           ps.point.y = arr_xyz[j][1]
           ps.point.z = arr_xyz[j][2]
-          if self.tl.canTransform('head_mount_kinect_rgb_optical_frame', self.table_link, rospy.Time(0)):
-            ps_in_kinect_frame = self.tl.transformPoint('head_mount_kinect_rgb_optical_frame', ps)
+          if self.tl.canTransform(to.markers[0].header.frame_id, self.table_link, rospy.Time(0)):
+            ps_in_kinect_frame = self.tl.transformPoint(to.markers[0].header.frame_id, ps)
           else:
             rospy.logwarn("No transform between %s and %s possible",to.markers[0].header.frame_id, self.table_link)    
             return
           arr_xyz_trans.append([ps_in_kinect_frame.point.x, ps_in_kinect_frame.point.y, ps_in_kinect_frame.point.z])
 #          arr_xyz_trans.append([ps.point.x, ps.point.y, ps.point.z])
-        print "arr_xyz_trans", arr_xyz_trans.__len__(), "pc width: ", pc.width
         pc_trans = PointCloud2()
-        pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), rospy.Time.now(), 'head_mount_kinect_rgb_optical_frame')
-        pc.header.frame_id = self.table_link
-        pc.header.stamp = rospy.Time.now()
+        pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), rospy.Time.now(), to.markers[0].header.frame_id)
         self.pub.publish(pc_trans)
         self.cloud_list.append(pc_trans)
         rospy.loginfo("cluster size %d", self.cloud_list.__len__())
-        
    
   def execute_cb(self, goal):
     with self.lock:
@@ -169,7 +162,6 @@ class ORKTabletop(object):
       
       if success:
         self._result.table_pose = self.centroid_table_pose
-        #TODO return table dimensions
         self._result.table_dims = self.table_dims
         self._result.objects = self.cloud_list  
         rospy.loginfo('%s: Succeeded' % self._action_name)

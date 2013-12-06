@@ -44,7 +44,7 @@ from tf import transformations
 from geometry_msgs.msg import Transform, Vector3, Quaternion
 import math
 
-def pointcloud2_to_array(cloud_msg):
+def pointcloud2_to_array(cloud_msg, padding=0):
     ''' 
     Converts a rospy PointCloud2 message to a numpy recordarray 
     
@@ -52,12 +52,13 @@ def pointcloud2_to_array(cloud_msg):
     '''
     print "datatype: ", cloud_msg.fields[0].datatype
     dtype_list = [(f.name, np.float32) for f in cloud_msg.fields]
-    
+    for i in range(padding):
+        dtype_list.append((str(i), np.float32))
     # print "dtype_list: ", dtype_list
     # print "len: ", cloud_msg.data.__len__()
     # print "divided len", int(math.floor(cloud_msg.data.__len__()/16.0))
     # print "height, width, point_step: ", cloud_msg.height, cloud_msg.width, cloud_msg.point_step 
-    cloud_arr = np.fromstring(cloud_msg.data, dtype_list, cloud_msg.width)
+    cloud_arr = np.fromstring(cloud_msg.data, dtype_list)
     return np.reshape(cloud_arr, (cloud_msg.height, cloud_msg.width))
 
 def get_xyz_points(cloud_array, remove_nans=True):
