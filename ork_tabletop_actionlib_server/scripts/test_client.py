@@ -11,14 +11,14 @@ import shared_autonomy_msgs.msg
 
 def tabletop_client():
     # Creates the SimpleActionClient, passing the type of the action
-    client = actionlib.SimpleActionClient('ork_tabletop', shared_autonomy_msgs.msg.tabletopAction)
+    client = actionlib.SimpleActionClient('ork_tabletop', shared_autonomy_msgs.msg.TabletopAction)
 
     # Waits until the action server has started up and started
     # listening for goals.
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal = shared_autonomy_msgs.msg.tabletopGoal()
+    goal = shared_autonomy_msgs.msg.TabletopGoal()
 
     # Sends the goal to the action server.
     client.send_goal(goal)

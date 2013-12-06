@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS message_generation sensor_msgs actionlib
 
 add_action_files(
   DIRECTORY action
-  FILES Segment.action BoundingBox.action EditPixel.action tabletop.action
+  FILES Segment.action BoundingBox.action EditPixel.action Tabletop.action
 )
 
 ## Generate messages in the 'msg' folder

@@ -16,17 +16,18 @@ from geometry_msgs.msg import Point
 from visualization_msgs.msg import MarkerArray
 import tf.transformations as trans
 from tf import TransformListener
+#from ork_tabletop_actionlib_server import pointclouds
 import pointclouds
 import numpy as np
 
 class ORKTabletop(object):
   # create messages that are used to publish feedback/result
-  _result   = shared_autonomy_msgs.msg.tabletopResult()
+  _result   = shared_autonomy_msgs.msg.TabletopResult()
 
   def __init__(self, name):
     self.tl = TransformListener()
     self._action_name = name
-    self._as = actionlib.SimpleActionServer(self._action_name, shared_autonomy_msgs.msg.tabletopAction, execute_cb=self.execute_cb)
+    self._as = actionlib.SimpleActionServer(self._action_name, shared_autonomy_msgs.msg.TabletopAction, execute_cb=self.execute_cb)
     self._as.start()
     self.sub = rospy.Subscriber("/recognized_object_array", RecognizedObjectArray, self.callback)
     self.pub = rospy.Publisher('/recognized_object_array_as_point_cloud', PointCloud2)
