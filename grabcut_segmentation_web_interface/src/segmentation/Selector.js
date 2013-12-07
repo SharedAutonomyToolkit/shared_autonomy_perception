@@ -11,16 +11,16 @@
 
 GRABCUTSEGMENTATIONLIB.Selector = function(options){
     // needed for passing `this` into nested functions
-	var that = this;
+    var that = this;
 
-	var divID = options.divID;
-	this.width = options.width;
- 	this.height = options.height;
- 	this.host = options.host;
-  	this.port = options.port || 8080;
-  	this.quality = options.quality;
-  	var topic = options.topic;
-  	var overlay = options.overlay;
+    var divID = options.divID;
+    this.width = options.width;
+    this.height = options.height;
+    this.host = options.host;
+    this.port = options.port || 8080;
+    this.quality = options.quality;
+    var topic = options.topic;
+    var overlay = options.overlay;
 
     // create no image initially
     this.image = new Image();
@@ -66,72 +66,72 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
      * Modifies that.bounds to save the coordinates
      */
     var mouseEventHandler = function (event, mouseState){
-		if( mouseState == 'down'){
+	if( mouseState == 'down'){
             //if mouse is pushed down get the position and save it
-			console.log('mouse down');
-		    mouseDown = true;
+	    console.log('mouse down');
+	    mouseDown = true;
 
-		    firstClick = { x: event.stageX, y:  event.stageY};
+	    firstClick = { x: event.stageX, y:  event.stageY};
 
             // TODO: these aren't used?
-			position = that.stage.globalToRos(event.stageX, event.stageY);
-        	positionVec3 = new ROSLIB.Vector3(position);
-        	
-		    //remove previous rectangle
+	    position = that.stage.globalToRos(event.stageX, event.stageY);
+            positionVec3 = new ROSLIB.Vector3(position);
+            
+	    //remove previous rectangle
             if (rect){
                 console.log('removing rect')
-			    that.stage.removeChild(rect);
-			    rect = null;
+		that.stage.removeChild(rect);
+		rect = null;
                 that.stage.update();
                 that.bounds = null;
-		    }
-		}
+	    }
+	}
         else if (mouseState === 'move') {
             if (mouseDown === true) {
-	            //if mouse button is being held down:
-	            //get the current mouse position
-	            //calculate distance from start position
-	            
-	            var currentClick={x: event.stageX, y: event.stageY};
+	        //if mouse button is being held down:
+	        //get the current mouse position
+	        //calculate distance from start position
+	        
+	        var currentClick={x: event.stageX, y: event.stageY};
 
                 // TODO: these vars are currently unused. 
-	            var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
-	            currentPosVec3 = new ROSLIB.Vector3(currentPos);
+	        var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
+	        currentPosVec3 = new ROSLIB.Vector3(currentPos);
 
-	            //calculate positions and rectangle information
-	            var squareStart = {x: firstClick.x, y: firstClick.y};
-	            if(firstClick.x > currentClick.x) {
-		            squareStart.x = currentClick.x;
-	            }
-	            if(firstClick.y > currentClick.y) {
-    		        squareStart.y = currentClick.y;
-	            }
-	            var distancex = Math.abs(firstClick.x - currentClick.x);
-	            var distancey = Math.abs(firstClick.y - currentClick.y);
+	        //calculate positions and rectangle information
+	        var squareStart = {x: firstClick.x, y: firstClick.y};
+	        if(firstClick.x > currentClick.x) {
+		    squareStart.x = currentClick.x;
+	        }
+	        if(firstClick.y > currentClick.y) {
+    		    squareStart.y = currentClick.y;
+	        }
+	        var distancex = Math.abs(firstClick.x - currentClick.x);
+	        var distancey = Math.abs(firstClick.y - currentClick.y);
                 that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
 
-	            //remove old rec so we can draw a new one
-	            if(rect) {
-		            that.stage.removeChild(rect);
-		            rect = null;
-	            }
-                // and, draw new rectangle
-	            rect = new createjs.Shape();
-	            rect.graphics.beginStroke("#F00");
-	            rect.graphics.drawRect(squareStart.x, squareStart.y, distancex, distancey);
-	            that.stage.addChild(rect);
-	            that.stage.update();
+	        //remove old rec so we can draw a new one
+	        if(rect) {
+		    that.stage.removeChild(rect);
+		    rect = null;
 	        }
+                // and, draw new rectangle
+	        rect = new createjs.Shape();
+	        rect.graphics.beginStroke("#F00");
+	        rect.graphics.drawRect(squareStart.x, squareStart.y, distancex, distancey);
+	        that.stage.addChild(rect);
+	        that.stage.update();
+	    }
         }
         else { //mouseState === 'up'
-	        //if mouse button is up, stop updating square on mouse move
-	        mouseDown = false;
+	    //if mouse button is up, stop updating square on mouse move
+	    mouseDown = false;
         }
     }; // end of mouseEventHandler
 
 
     //set up callbacks for the canvas
-	this.stage.addEventListener('stagemousedown', function(event) {
+    this.stage.addEventListener('stagemousedown', function(event) {
         mouseEventHandler(event,'down');
     });
 
