@@ -191,6 +191,9 @@ class ORKTabletop(object):
     def execute_cb(self, goal):
         rospy.loginfo('Executing ORKTabletop action')
 
+        # want to get the NEXT data coming in, rather than the current one. 
+        self.has_data = False
+
         rr = rospy.Rate(1.0)
         while not rospy.is_shutdown() and not self._as.is_preempt_requested() and not self.has_data:
             rr.sleep()
