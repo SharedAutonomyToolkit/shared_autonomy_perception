@@ -35,7 +35,6 @@ class ORKTabletop(object):
         self.table_topic = "/marker_tables"
         # TODO: Are we still actively using the transforms broadcast here? I'd thought that that disappeared in a previous implementation...
         self.br = tf.TransformBroadcaster()
-        self.table_pose = PoseStamped()
         self.centroid_table_pose = PoseStamped()
 
         # create messages that are used to publish feedback/result.
@@ -48,10 +47,8 @@ class ORKTabletop(object):
         # TODO: if we don't (can't!) compute the height, should we at least give it non-zero depth? 
         # (would also require shifting the observed centroid down by table_dim.z/2)
         self.table_dim.z = 0.0
-        self.cloud_list = []
 
-        # TODO: What does this magic number signify?
-        self.point_array_size = 4
+        # TODO: should this be a parameter??
         self.table_link = 'table_link'
 
         self._as.start()
@@ -64,6 +61,9 @@ class ORKTabletop(object):
         with self.result_lock:
             rospy.loginfo("Objects %d", data.objects.__len__())
 
+            # list of points in table (I think ...)
+            table_points = []
+
             # obtain table_offset and table_pose
             to = rospy.wait_for_message(self.table_topic, MarkerArray);
 
@@ -73,19 +73,19 @@ class ORKTabletop(object):
                 rospy.loginfo("No tables detected")
                 return
             else:
-                point_list == []
-
-                for i in range (0, self.point_array_size):
+                # TODO: What does this magic number signify?
+                point_array_size = 4
+                for i in range (0, point_array_size):
                     p = Point()
                     p.x = to.markers[0].points[i].x
                     p.y = to.markers[0].points[i].y
                     p.z = to.markers[0].points[i].z
-                    point_list.append(p)
-
+                    table_points.append(p)
                 # this is a table pose at the edge close to the robot, in the center of x axis
-                self.table_pose.header = to.markers[0].header
-                self.table_pose.header.stamp = rospy.Time.now()
-                self.table_pose.pose = to.markers[0].pose
+                table_pose = PoseStamped()
+                table_pose.header = to.markers[0].header
+                table_pose.header.stamp = rospy.Time.now()
+                table_pose.pose = to.markers[0].pose
                 
             # Determine table dimensions
             min_x = sys.float_info.max
@@ -93,15 +93,15 @@ class ORKTabletop(object):
             max_x = -sys.float_info.max
             max_y = -sys.float_info.max
 
-            for i in range (point_list.__len__()):
-                if point_list[i].x > max_x:
-                    max_x = point_list[i].x
-                if point_list[i].y > max_y:
-                    max_y = point_list[i].y
-                if point_list[i].x < min_x:
-                    min_x = point_list[i].x
-                if point_list[i].y < min_y:
-                    min_y = point_list[i].y
+            for i in range (table_points.__len__()):
+                if table_points[i].x > max_x:
+                    max_x = table_points[i].x
+                if table_points[i].y > max_y:
+                    max_y = table_points[i].y
+                if table_points[i].x < min_x:
+                    min_x = table_points[i].x
+                if table_points[i].y < min_y:
+                    min_y = table_points[i].y
 
             self.table_dim.x = abs(max_x - min_x)
             self.table_dim.y = abs(max_y - min_y)
@@ -120,19 +120,16 @@ class ORKTabletop(object):
             centroid.pose.orientation.w = 1.0
 
             # clusters
-            # TODO: Why clear this so far from where it's used?
-            self.cloud_list = []
-            # transform each object into 
+            cluster_list = []
+            # transform each object into desired frame; add to list of clusters
             for i in range (data.objects.__len__()):
                 time = rospy.Time.now()
                 rospy.loginfo("Point clouds %s", data.objects[i].point_clouds.__len__())
                 # table to camera transform
-                self.br.sendTransform((self.table_pose.pose.position.x, self.table_pose.pose.position.y, self.table_pose.pose.position.z),
-                                      (self.table_pose.pose.orientation.x, self.table_pose.pose.orientation.y, self.table_pose.pose.orientation.z, self.table_pose.pose.orientation.w),
-                                      # (q3[0], q3[1], q3[2], q3[3]),
-                                      time,
-                                      self.table_link,
-                                      to.markers[0].header.frame_id)
+                pos = table_pose.pose.position
+                rot = table_pose.pose.orientation
+                self.br.sendTransform((pos.x, pos.y, pos.z), (rot.x, rot.y, rot.z, rot.w),
+                                      time, self.table_link, to.markers[0].header.frame_id)
 
                 # centroid of the table in head_mount_kinect_rgb_optical_frame
                 if self.tl.canTransform(to.markers[0].header.frame_id, self.table_link, rospy.Time(0)):
@@ -167,9 +164,9 @@ class ORKTabletop(object):
                 pc_trans = PointCloud2()
                 pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), rospy.Time.now(), to.markers[0].header.frame_id)
                 self.pub.publish(pc_trans)
-                self.cloud_list.append(pc_trans)
-                rospy.loginfo("cluster size %d", self.cloud_list.__len__())
-
+                cluster_list.append(pc_trans)
+                rospy.loginfo("cluster size %d", cluster_list.__len__())
+            self._result.objects = cluster_list 
 
     def execute_cb(self, goal):
         # helper variables
@@ -187,7 +184,6 @@ class ORKTabletop(object):
             with self.result_lock:
                 self._result.table_pose = self.centroid_table_pose
                 self._result.table_dims = self.table_dim
-                self._result.objects = self.cloud_list
                 rospy.loginfo('%s: Succeeded' % self._action_name)
                 self._as.set_succeeded(self._result)
                 
