@@ -1,0 +1,13 @@
+<launch>
+
+    <!-- Robot Description --> <param name="robot_description" textfile="/etc/ros/hydro/urdf/robot.xml" />
+
+    <!-- Robot Analyzer --> <rosparam command="load" file="$(find pr2_bringup)/config/pr2_analyzers.yaml" ns="diag_agg" />
+
+    <!-- Robot bringup --> <include file="$(find shared_autonomy_launch)/launch/pr2_hydro.launch" />
+
+    <include file="/etc/ros/hydro/ft.launch" />
+
+    <rosparam file="/etc/ros/robot.yaml"/>
+
+</launch> 
