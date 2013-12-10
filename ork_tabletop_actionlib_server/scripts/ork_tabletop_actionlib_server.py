@@ -29,7 +29,7 @@ class ORKTabletop(object):
 
         self._action_name = name
         self._as = actionlib.SimpleActionServer(self._action_name, shared_autonomy_msgs.msg.TabletopAction, execute_cb=self.execute_cb, auto_start=False)
-        self._as.start()
+
 
         self.sub = rospy.Subscriber("/recognized_object_array", RecognizedObjectArray, self.callback)
         self.pub = rospy.Publisher('/recognized_object_array_as_point_cloud', PointCloud2)
@@ -53,6 +53,7 @@ class ORKTabletop(object):
         self.point_array_size = 4
         self.table_link = 'table_link'
 
+        self._as.start()
 
 
     # TODO: Is this really the best structure for handling the callbacks?
