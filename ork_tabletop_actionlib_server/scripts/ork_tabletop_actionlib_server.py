@@ -74,7 +74,7 @@ class ORKTabletop(object):
                 rospy.loginfo("No tables detected")
                 return
             else:
-                self.point_list == []:
+                self.point_list == []
 
                 for i in range (0, self.point_array_size):
                     p = Point()
