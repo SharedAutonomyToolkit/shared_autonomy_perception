@@ -21,15 +21,12 @@ import pointclouds
 import numpy as np
 
 class ORKTabletop(object):
-    # create messages that are used to publish feedback/result
-    _result = shared_autonomy_msgs.msg.TabletopResult()
 
     def __init__(self, name):
         self.tl = TransformListener()
 
         self._action_name = name
         self._as = actionlib.SimpleActionServer(self._action_name, shared_autonomy_msgs.msg.TabletopAction, execute_cb=self.execute_cb, auto_start=False)
-
 
         self.sub = rospy.Subscriber("/recognized_object_array", RecognizedObjectArray, self.callback)
         self.pub = rospy.Publisher('/recognized_object_array_as_point_cloud', PointCloud2)
@@ -40,7 +37,12 @@ class ORKTabletop(object):
         self.br = tf.TransformBroadcaster()
         self.table_pose = PoseStamped()
         self.centroid_table_pose = PoseStamped()
-        self.lock = threading.Lock()
+
+        # create messages that are used to publish feedback/result.
+        # accessed by multiple threads
+        self._result = shared_autonomy_msgs.msg.TabletopResult()
+        self.result_lock = threading.Lock()
+
         self.table_dim = Point()
         # we do not compute the height
         # TODO: if we don't (can't!) compute the height, should we at least give it non-zero depth? 
@@ -60,7 +62,7 @@ class ORKTabletop(object):
     # Would it be possible to have separate callbacks for table and objects, each updating a most-recently-seen variable?
     # Or maybe use the message_filters.TimeSynchronizer class if corresponding table/object data has identical timestamps?
     def callback(self, data):
-        with self.lock:
+        with self.result_lock:
             rospy.loginfo("Objects %d", data.objects.__len__())
 
             # obtain table_offset and table_pose
@@ -162,33 +164,31 @@ class ORKTabletop(object):
                         rospy.logwarn("No transform between %s and %s possible",to.markers[0].header.frame_id, self.table_link)
                         return
                     arr_xyz_trans.append([ps_in_kinect_frame.point.x, ps_in_kinect_frame.point.y, ps_in_kinect_frame.point.z])
-                    # arr_xyz_trans.append([ps.point.x, ps.point.y, ps.point.z])
-                    pc_trans = PointCloud2()
-                    pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), rospy.Time.now(), to.markers[0].header.frame_id)
-                    self.pub.publish(pc_trans)
-                    self.cloud_list.append(pc_trans)
-                    rospy.loginfo("cluster size %d", self.cloud_list.__len__())
+                # arr_xyz_trans.append([ps.point.x, ps.point.y, ps.point.z])
+                pc_trans = PointCloud2()
+                pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), rospy.Time.now(), to.markers[0].header.frame_id)
+                self.pub.publish(pc_trans)
+                self.cloud_list.append(pc_trans)
+                rospy.loginfo("cluster size %d", self.cloud_list.__len__())
 
 
     def execute_cb(self, goal):
-        with self.lock:
-            # helper variables
-            success = True
+        # helper variables
+        success = True
 
-            # publish info to the console for the user
-            rospy.loginfo('Executing ORKTabletop action')
+        # publish info to the console for the user
+        rospy.loginfo('Executing ORKTabletop action')
 
-            # start executing the action
-            # check that preempt has not been requested by the client
-            if self._as.is_preempt_requested():
-                rospy.loginfo('%s: Preempted' % self._action_name)
-                self._as.set_preempted()
-                success = False
-                return
-            # TODO: wtf? wasn't this lock already acquired by "with self.lock" ???
-            # granted, only this statement needs to be locked, not the whole function...
-            self.lock.acquire()
-            if success:
+        # start executing the action
+        # check that preempt has not been requested by the client
+        if self._as.is_preempt_requested():
+            rospy.loginfo('%s: Preempted' % self._action_name)
+            self._as.set_preempted()
+            success = False
+            return
+
+        if success:
+            with self.result_lock:
                 self._result.table_pose = self.centroid_table_pose
                 self._result.table_dims = self.table_dim
                 self._result.objects = self.cloud_list
