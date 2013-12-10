@@ -2,13 +2,14 @@
 
   <arg name="kinect_name" value="/head_mount_kinect"/>
   <arg name="segment_service" value="segment_service"/>
-
+<!--
  <include file="$(find pr2_moveit_config)/launch/move_group.launch">
   <arg name="publish_monitored_planning_scene" value="true" />
-  <arg name="info" value="true" /> <!-- I'm hoping that this prints debugging info to rviz-->
+  <arg name="info" value="true" /> 
  </include>
 
  <include file="$(find pr2_moveit_config)/launch/moveit_rviz.launch"/>
+-->
 
  <include file="$(find cluster_grasp_planner)/launch/pr2_cluster_grasp_planner.launch">
    <arg name="use_machine" value="false"/>
@@ -27,6 +28,5 @@
     <arg name="segment_service" value="$(arg segment_service)"/>
     <arg name="kinect_name" value="$(arg kinect_name)"/>
   </include>
-
 
 </launch>
