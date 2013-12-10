@@ -49,8 +49,7 @@ class ORKTabletop(object):
         # (would also require shifting the observed centroid down by table_dim.z/2)
         self.table_dim.z = 0.0
         self.cloud_list = []
-        # TODO: Why is this a member variable? It's initialized and used only in the callback. 
-        self.point_list = []
+
         # TODO: What does this magic number signify?
         self.point_array_size = 4
         self.table_link = 'table_link'
@@ -74,14 +73,14 @@ class ORKTabletop(object):
                 rospy.loginfo("No tables detected")
                 return
             else:
-                self.point_list == []
+                point_list == []
 
                 for i in range (0, self.point_array_size):
                     p = Point()
                     p.x = to.markers[0].points[i].x
                     p.y = to.markers[0].points[i].y
                     p.z = to.markers[0].points[i].z
-                    self.point_list.append(p)
+                    point_list.append(p)
 
                 # this is a table pose at the edge close to the robot, in the center of x axis
                 self.table_pose.header = to.markers[0].header
@@ -94,15 +93,15 @@ class ORKTabletop(object):
             max_x = -sys.float_info.max
             max_y = -sys.float_info.max
 
-            for i in range (self.point_list.__len__()):
-                if self.point_list[i].x > max_x:
-                    max_x = self.point_list[i].x
-                if self.point_list[i].y > max_y:
-                    max_y = self.point_list[i].y
-                if self.point_list[i].x < min_x:
-                    min_x = self.point_list[i].x
-                if self.point_list[i].y < min_y:
-                    min_y = self.point_list[i].y
+            for i in range (point_list.__len__()):
+                if point_list[i].x > max_x:
+                    max_x = point_list[i].x
+                if point_list[i].y > max_y:
+                    max_y = point_list[i].y
+                if point_list[i].x < min_x:
+                    min_x = point_list[i].x
+                if point_list[i].y < min_y:
+                    min_y = point_list[i].y
 
             self.table_dim.x = abs(max_x - min_x)
             self.table_dim.y = abs(max_y - min_y)
@@ -176,11 +175,8 @@ class ORKTabletop(object):
         # helper variables
         success = True
 
-        # publish info to the console for the user
         rospy.loginfo('Executing ORKTabletop action')
 
-        # start executing the action
-        # check that preempt has not been requested by the client
         if self._as.is_preempt_requested():
             rospy.loginfo('%s: Preempted' % self._action_name)
             self._as.set_preempted()
