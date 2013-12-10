@@ -43,6 +43,8 @@ class ORKTabletop(object):
         # accessed by multiple threads
         self._result = shared_autonomy_msgs.msg.TabletopResult()
         self.result_lock = threading.Lock()
+        # used s.t. we don't return a _result message that hasn't been updated yet. 
+        self.has_data = False
 
         self._action_name = name
         self._as = actionlib.SimpleActionServer(self._action_name, shared_autonomy_msgs.msg.TabletopAction, 
@@ -183,13 +185,21 @@ class ORKTabletop(object):
             self._result.objects = cluster_list 
             self._result.table_dims = table_dim
             self._result.table_pose = centroid_table_pose
+        # Are booleans used by two threads safe? I hope so, b/c I do it in the IM_HMI code ...
+        self.has_data = True
 
     def execute_cb(self, goal):
         rospy.loginfo('Executing ORKTabletop action')
 
+        rr = rospy.Rate(1.0)
+        while not rospy.is_shutdown() and not self._as.is_preempt_requested() and not self.has_data:
+            rr.sleep()
+
         if self._as.is_preempt_requested():
             rospy.loginfo('%s: Preempted' % self._action_name)
             self._as.set_preempted()
+        elif rospy.is_shutdown():
+            self._as.set_aborted()
         else:
             with self.result_lock:
                 rospy.loginfo('%s: Succeeded' % self._action_name)
