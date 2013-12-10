@@ -98,18 +98,20 @@ class SceneHandler():
 
         return (obj_pose, obj_dims)
 
-    def add_table(self):
+    def add_table(self, table_pose=[], table_dims = []):
         # TODO: actually have this find the plane - for now, it just adds the pre-set table
-        table_pose = PoseStamped()
-        table_pose.header.frame_id = "odom_combined"
-        table_pose.pose.position.x = 0.55
-        table_pose.pose.position.y = 0.0
-        table_pose.pose.position.z = 0.75
-        table_pose.pose.orientation.w = 1.0
-        table_dims = Point()
-        table_dims.x = 0.7
-        table_dims.y = 1.0
-        table_dims.z = 0.05
+        if table_pose == []:
+            table_pose = PoseStamped()
+            table_pose.header.frame_id = "odom_combined"
+            table_pose.pose.position.x = 0.55
+            table_pose.pose.position.y = 0.0
+            table_pose.pose.position.z = 0.75
+            table_pose.pose.orientation.w = 1.0
+            table_dims = Point()
+        if table_dims == []:
+            table_dims.x = 0.7
+            table_dims.y = 1.0
+            table_dims.z = 0.05
         self.insert_object(table_pose, table_dims, "table")
 
     def insert_object(self, pose, dims, name):
