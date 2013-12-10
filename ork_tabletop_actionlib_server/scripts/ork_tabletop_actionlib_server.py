@@ -13,6 +13,7 @@ from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import Point
+from geometry_msgs.msg import TransformStamped
 from visualization_msgs.msg import MarkerArray
 import tf.transformations as trans
 from tf import TransformListener
@@ -81,6 +82,8 @@ class ORKTabletop(object):
             table_pose.pose = to.markers[0].pose
             
         # Determine table dimensions
+        # TODO: doesn't this assume that the table is axis-aligned in the original frame, since we haven't transformed it yet??
+        rospy.loginfo('calculating table pose bounding box in frame: %s' % table_pose.header.frame_id)
         min_x = sys.float_info.max
         min_y = sys.float_info.max
         max_x = -sys.float_info.max
@@ -107,6 +110,7 @@ class ORKTabletop(object):
         print "Dimensions: ", table_dim.x, table_dim.y
 
         # centroid of a table in table_link frame
+        # TODO: I'm not convinced that this is correct
         centroid = PoseStamped()
         centroid.header.frame_id = self.table_link
         centroid.header.stamp = table_pose.header.stamp
@@ -118,12 +122,20 @@ class ORKTabletop(object):
         centroid.pose.orientation.z = 0.0
         centroid.pose.orientation.w = 1.0
 
+        tt = TransformStamped()
+        # from table_pose to our newly-defined table_link
+        tt.header = table_pose.header
+        tt.child_frame_id = self.table_link
+        tt.transform.translation = table_pose.pose.position
+        tt.transform.rotation = table_pose.pose.orientation
+        self.tl.setTransform(tt)
+
         # Determine the table->sensor transformation
-        centroid_table_pose = PoseStamped()
-        pos = table_pose.pose.position
-        rot = table_pose.pose.orientation
-        self.br.sendTransform((pos.x, pos.y, pos.z), (rot.x, rot.y, rot.z, rot.w),
-                              table_pose.header.stamp, self.table_link, table_pose.header.frame_id)
+        # centroid_table_pose = PoseStamped()
+        # pos = table_pose.pose.position
+        # rot = table_pose.pose.orientation
+        # self.br.sendTransform((pos.x, pos.y, pos.z), (rot.x, rot.y, rot.z, rot.w),
+        #                      table_pose.header.stamp, self.table_link, table_pose.header.frame_id)
         self.tl.waitForTransform(self.table_link, table_pose.header.frame_id, table_pose.header.stamp, rospy.Duration(3.0))
         # centroid of the table in head_mount_kinect_rgb_optical_frame
         if self.tl.canTransform(table_pose.header.frame_id, self.table_link, table_pose.header.stamp):
