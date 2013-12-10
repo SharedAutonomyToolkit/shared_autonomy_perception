@@ -67,6 +67,7 @@ class ORKTabletop(object):
             return
         else:
             # TODO: What does this magic number signify?
+            # TODO: Are we guaranteed that the first marker will be the one we want?
             point_array_size = 4
             for i in range (0, point_array_size):
                 p = Point()
@@ -132,7 +133,6 @@ class ORKTabletop(object):
             rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, self.table_link)
             return
 
-        # clusters
         cluster_list = []
         # transform each object into desired frame; add to list of clusters
         for i in range (data.objects.__len__()):
@@ -173,18 +173,12 @@ class ORKTabletop(object):
             self._result.table_pose = centroid_table_pose
 
     def execute_cb(self, goal):
-        # helper variables
-        success = True
-
         rospy.loginfo('Executing ORKTabletop action')
 
         if self._as.is_preempt_requested():
             rospy.loginfo('%s: Preempted' % self._action_name)
             self._as.set_preempted()
-            success = False
-            return
-
-        if success:
+        else:
             with self.result_lock:
                 rospy.loginfo('%s: Succeeded' % self._action_name)
                 self._as.set_succeeded(self._result)
