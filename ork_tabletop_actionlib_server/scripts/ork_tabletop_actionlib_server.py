@@ -116,8 +116,8 @@ class ORKTabletop(object):
         centroid = PoseStamped()
         centroid.header.frame_id = self.table_link
         centroid.header.stamp = table_pose.header.stamp
-        centroid.pose.position.x = 0.0
-        centroid.pose.position.y = (max_y - min_y)/2.
+        centroid.pose.position.x = (max_x + min_x)/2.
+        centroid.pose.position.y = (max_y + min_y)/2.
         centroid.pose.position.z = 0.0
         centroid.pose.orientation.x = 0.0
         centroid.pose.orientation.y = 0.0
