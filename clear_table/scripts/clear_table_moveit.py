@@ -26,10 +26,10 @@ class Segment(smach.State):
          self.scene = SceneHandler()
 
      def execute(self, userdata):
-         # TODO: I don't like this way of catching exceptions ... the helper functions have the try/catch
-         # block, but at the state machine level we check for None and branch based on that. 
-         kinect_data = self.sensors.get_kinect()
-         if kinect_data is None:
+
+         # we're willing to wait 15seconds to get the data
+         kinect_data = self.sensors.get_kinect(15)
+         if not kinect_data:
              return 'segmentation_failed'
 
          (state, result) = self.sensors.get_segmentation(kinect_data)

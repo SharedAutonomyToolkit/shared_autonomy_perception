@@ -18,18 +18,25 @@ class SensorHandler():
         self.segment_client = actionlib.SimpleActionClient('segment_service', SegmentAction)
         self.point_publisher = rospy.Publisher('segmented_points', PointCloud2)
 
-    def get_kinect(self):
+    def get_kinect(self, delay):
         """ this handles calling the kinect_assembly service"""
 
         print "waiting for assemble_kinect service"
         rospy.wait_for_service('head_mount_kinect/assemble_kinect')
         print "... got service"
 
-        try:
-            kinect_data = self.kinect_client()
-        except rospy.ServiceException:
-            print 'scene_handler unable to get kinect data!'
-            kinect_data = None
+        # wait 15 seconds to get data
+        rospy.loginfo('Trying to get kinect data')
+        kinect_data = []
+        rr = rospy.Rate(1.0)
+        count = 0
+        while not kinect_data and count < delay:
+            try:
+                kinect_data = self.kinect_client()
+            except rospy.ServiceException:
+                rospy.loginfo('...attempt %d' % count)
+                count += 1
+                rr.sleep()
 
         return kinect_data
         
