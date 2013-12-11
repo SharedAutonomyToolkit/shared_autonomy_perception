@@ -175,17 +175,20 @@ class ORKTabletop(object):
             self._result.objects = cluster_list 
             self._result.table_dims = table_dim
             self._result.table_pose = centroid_table_pose
-        # Are booleans used by two threads safe? I hope so, b/c I do it in the IM_HMI code ...
-        self.has_data = True
+            self.has_data = True
 
     def execute_cb(self, goal):
         rospy.loginfo('Executing ORKTabletop action')
 
         # want to get the NEXT data coming in, rather than the current one. 
-        self.has_data = False
+        with self.result_lock:
+            self.has_data = False
 
         rr = rospy.Rate(1.0)
-        while not rospy.is_shutdown() and not self._as.is_preempt_requested() and not self.has_data:
+        while not rospy.is_shutdown() and not self._as.is_preempt_requested():
+            with self.result_lock:
+                if self.has_data:
+                    break
             rr.sleep()
 
         if self._as.is_preempt_requested():
