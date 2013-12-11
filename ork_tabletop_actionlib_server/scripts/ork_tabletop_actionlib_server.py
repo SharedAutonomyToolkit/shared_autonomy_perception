@@ -32,12 +32,7 @@ class ORKTabletop(object):
         # We listen for ORK's MarkerArray of tables on this topic
         self.table_topic = "/marker_tables"
 
-        # TODO: should this be a parameter?? or local variable?
-        # the name of the frame that we'll publish the computed table in
-        self.table_link = 'table_link'
         self.tl = TransformListener()
-
-        self.br = tf.TransformBroadcaster()
 
         # create messages that are used to publish feedback/result.
         # accessed by multiple threads
@@ -111,10 +106,13 @@ class ORKTabletop(object):
         table_dim.y = abs(max_y - min_y)
         print "Dimensions: ", table_dim.x, table_dim.y
 
+        # Temporary frame used for transformations
+        table_link = 'table_link'
+
         # centroid of a table in table_link frame
         # TODO: I'm not convinced that this is correct
         centroid = PoseStamped()
-        centroid.header.frame_id = self.table_link
+        centroid.header.frame_id = table_link
         centroid.header.stamp = table_pose.header.stamp
         centroid.pose.position.x = (max_x + min_x)/2.
         centroid.pose.position.y = (max_y + min_y)/2.
@@ -127,24 +125,17 @@ class ORKTabletop(object):
         tt = TransformStamped()
         # from table_pose to our newly-defined table_link
         tt.header = table_pose.header
-        tt.child_frame_id = self.table_link
+        tt.child_frame_id = table_link
         tt.transform.translation = table_pose.pose.position
         tt.transform.rotation = table_pose.pose.orientation
         self.tl.setTransform(tt)
-
-        # Determine the table->sensor transformation
-        # centroid_table_pose = PoseStamped()
-        # pos = table_pose.pose.position
-        # rot = table_pose.pose.orientation
-        # self.br.sendTransform((pos.x, pos.y, pos.z), (rot.x, rot.y, rot.z, rot.w),
-        #                      table_pose.header.stamp, self.table_link, table_pose.header.frame_id)
-        self.tl.waitForTransform(self.table_link, table_pose.header.frame_id, table_pose.header.stamp, rospy.Duration(3.0))
+        self.tl.waitForTransform(table_link, table_pose.header.frame_id, table_pose.header.stamp, rospy.Duration(3.0))
         # centroid of the table in head_mount_kinect_rgb_optical_frame
-        if self.tl.canTransform(table_pose.header.frame_id, self.table_link, table_pose.header.stamp):
+        if self.tl.canTransform(table_pose.header.frame_id, table_link, table_pose.header.stamp):
             centroid_table_pose = self.tl.transformPose(table_pose.header.frame_id, centroid)
             self.pose_pub.publish(centroid_table_pose)
         else:
-            rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, self.table_link)
+            rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, table_link)
             return
 
         cluster_list = []
@@ -160,15 +151,15 @@ class ORKTabletop(object):
             arr_xyz_trans = []
             for j in range (arr_xyz.__len__()):
                 ps = PointStamped();
-                ps.header.frame_id = self.table_link
+                ps.header.frame_id = table_link
                 ps.header.stamp = table_pose.header.stamp
                 ps.point.x = arr_xyz[j][0]
                 ps.point.y = arr_xyz[j][1]
                 ps.point.z = arr_xyz[j][2]
-                if self.tl.canTransform(table_pose.header.frame_id, self.table_link, table_pose.header.stamp):
+                if self.tl.canTransform(table_pose.header.frame_id, table_link, table_pose.header.stamp):
                     ps_in_kinect_frame = self.tl.transformPoint(table_pose.header.frame_id, ps)
                 else:
-                    rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, self.table_link)
+                    rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, table_link)
                     return
                 arr_xyz_trans.append([ps_in_kinect_frame.point.x, ps_in_kinect_frame.point.y, ps_in_kinect_frame.point.z])
 
