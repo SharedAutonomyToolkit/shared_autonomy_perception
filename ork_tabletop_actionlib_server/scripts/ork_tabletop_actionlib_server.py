@@ -1,25 +1,27 @@
 #! /usr/bin/env python
 
-#import roslib; roslib.load_manifest('ork_tabletop_actionlib_server')
-import rospy
-import actionlib
-import shared_autonomy_msgs.msg
+import numpy as np
 import threading
 import sys
 
-import tf
+import rospy
+import actionlib
+
+from tf import TransformListener
+
 from object_recognition_msgs.msg import RecognizedObjectArray
 from sensor_msgs.msg import PointCloud2
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PointStamped, Point, TransformStamped
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import TransformStamped
+from shared_autonomy_msgs.msg import TabletopAction, TabletopResult
 from visualization_msgs.msg import MarkerArray
-import tf.transformations as trans
-from tf import TransformListener
+
+# TODO: Fix the module organization of this package (this belongs in ../src/ork_tabletop_action_server/)
+# TODO: there's some other pointcloud2 handling code in clear_table ... is there some canonical tool for this, so each module doesn't have its own library?
 #from ork_tabletop_actionlib_server import pointclouds
 import pointclouds
-import numpy as np
 
 class ORKTabletop(object):
 
@@ -36,13 +38,13 @@ class ORKTabletop(object):
 
         # create messages that are used to publish feedback/result.
         # accessed by multiple threads
-        self._result = shared_autonomy_msgs.msg.TabletopResult()
+        self._result = TabletopResult()
         self.result_lock = threading.Lock()
         # used s.t. we don't return a _result message that hasn't been updated yet. 
         self.has_data = False
 
         self._action_name = name
-        self._as = actionlib.SimpleActionServer(self._action_name, shared_autonomy_msgs.msg.TabletopAction, 
+        self._as = actionlib.SimpleActionServer(self._action_name, TabletopAction, 
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
