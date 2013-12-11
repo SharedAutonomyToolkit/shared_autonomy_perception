@@ -1,0 +1,77 @@
+<launch>
+  <!-- This launch file assumes that everythign on the PR2 has been started, along with move_group and rviz-->
+
+  <!-- These arguments control which pieces of the clear_table pipeline are started. Usage:
+       roslaunch clear_table_unified.launch use_grabcut:={true, false} use_im:={true, false} use_grasp_db:={true, false}
+       NB - use_im only has an effect if use_grabcut==true (it toggles between the InteractiveMarker and the JS interfaces)
+       NB - use_grasp_db only has an effect if use_grabcut==false (it toggles between the grasp cluster planner and the grasp DB that's part of ORK) -->
+  <arg name="use_grabcut" default="false"/>
+  <arg name="use_im" default="false"/>
+  <arg name="use_grasp_db" default="false"/>
+
+
+
+  <!-- Export arguments for use by the actual clear_table state machine 
+       I'm doing this here s.t. it's possible to restart the state machine w/o a launch file -->
+  <param name="clear_table_use_grabcut" value="$(arg use_grabcut)"/>
+  <param name="clear_table_use_im" value="$(arg use_im)"/>
+  <param name="clear_table_use_grasp_db" value="$(arg use_grasp_db)"/>
+
+
+  <!-- Start appropriate grasp generation servers -->
+  <group if="$(arg use_grasp_db)">
+    <!-- TODO: fill this in when D figures out how to work the grasp DB -->
+  </group>
+  <group unless="$(arg use_grasp_db)">
+    <include file="$(find cluster_grasp_planner)/launch/pr2_cluster_grasp_planner.launch">
+      <arg name="use_machine" value="false"/>
+    </include>
+  </group>
+
+  <arg name="kinect_name" default="/head_mount_kinect"/>
+  <arg name="segment_service" default="segment_service"/>
+
+  <!-- handle starting whichever segmentation server we're using -->
+  <group if="$(arg use_grabcut)">
+    <!-- and these arguments are only used in the Grabcut section - default is usually fine -->
+    <arg name="bbox_service" default="get_bounding_box"/>
+    <arg name="pixel_service" default="edit_pixel_labels"/>
+
+    <!-- assemble_kinect -->
+    <include file="$(find assemble_kinect)/launch/assemble_kinect.launch">
+      <arg name="kinect_name" value="$(arg kinect_name)"/>
+    </include>
+
+    <!-- grabcut3d: node that actually does the segmentation calculations -->
+    <include file="$(find grabcut3d_segmentation)/launch/grabcut3d.launch">
+      <arg name="segment_service" value="$(arg segment_service)"/>
+      <arg name="bbox_service" value="$(arg bbox_service)"/>
+      <arg name="pixel_service" value="$(arg pixel_service)"/>
+    </include>
+
+    <!-- HMI: launch whatever human interaction was chosen for grabcut3d-->
+    <group if="$(arg use_im)">
+      <include file="$(find im_hmi)/launch/im_hmi.launch">
+        <arg name="bbox_service" value="$(arg bbox_service)"/>
+        <arg name="pixel_service" value="$(arg pixel_service)"/>
+      </include>        
+    </group>
+    <group unless="$(arg use_im)">
+      <!-- TODO: fill me in with launching the javascript interface instead! -->
+    </group>
+
+  </group> <!-- end "if use_grabcut" -->
+  <group unless="$(arg use_grabcut)">
+    <!-- TODO: launch everything required for the ORK tabletop segmentation -->
+  </group>
+
+
+  <!-- and finally, start the state machine -->
+  <node name="run_clear_table" pkg="clear_table" type="clear_table_moveit.py" launch-prefix="xterm -e">
+    <!-- TODO: also make these parameters, for easier restarting of state machine -->
+    <remap from="assemble_kinect" to="$(arg kinect_name)/assemble_kinect"/>
+    <remap from="segment_service" to="$(arg segment_service)"/>
+    <param name="data_wait" value="10.0"/>
+  </node>
+
+</launch>

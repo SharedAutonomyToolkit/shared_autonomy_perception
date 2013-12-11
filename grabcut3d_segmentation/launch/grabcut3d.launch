@@ -1,0 +1,22 @@
+<launch>
+  <!-- NOTE - this file does NOT launch the actual HMI that grabcut requires -->
+
+  <arg name="segment_service" default="segment_service"/>
+  <arg name="bbox_service" default="get_bounding_box"/>
+  <arg name="pixel_service" default="edit_pixel_labels"/>
+
+  <node name="grabcut3d_segmentation_node" pkg="grabcut3d_segmentation" type="grabcut3d_segmentation_node" output="screen">
+    <remap from="segment_service" to="$(arg segment_service)"/>
+    <remap from="bbox_service" to="$(arg bbox_service)"/>
+    <remap from="pixel_service" to="$(arg pixel_service)"/>
+    <param name="loop_rate" value="5.0"/>
+    <param name="preempt_wait" value="10.0"/>
+    <param name="connect_wait" value="60.0"/>
+    <param name="grabcut_iters" value="10"/>
+    <param name="min_range" value="0.25"/>
+    <param name="max_range" value="3.0"/>
+    <param name="click_radius" value="20"/>
+    <param name="depth_interpolation_radius" value="10.0"/>
+  </node>
+
+</launch>

@@ -1,0 +1,19 @@
+<launch>
+  <!-- namespace for the camera that we're listening to. 
+  Can't push the openni_launch down into another namespace, so we use this-->
+  <arg name="kinect_name" default="/head_mount_kinect"/>
+
+  <!-- the kinect's depth and rgb images are not published synchronously.
+  This gathers them and provides a service to obtain the most recent set.
+  TODO: I'm not sure that this mapping is ideal, but it seems to match what
+  openni_kinect does -->
+
+  <node name="assemble_kinect" pkg="assemble_kinect" type="assemble_kinect" output="screen">
+    <remap from="camera/rgb/image_color" to="$(arg kinect_name)/rgb/image_color"/>
+    <remap from="camera/depth_registered/image" to="$(arg kinect_name)/depth_registered/image_raw"/>
+    <remap from="camera/depth_registered/camera_info" to="$(arg kinect_name)/depth_registered/camera_info"/>
+    <remap from="camera/depth_registered/points" to="$(arg kinect_name)/depth_registered/points"/>
+    <remap from="camera/assemble_kinect" to="$(arg kinect_name)/assemble_kinect"/>
+  </node>
+
+</launch>
