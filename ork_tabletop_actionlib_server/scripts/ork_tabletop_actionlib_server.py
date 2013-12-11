@@ -63,7 +63,7 @@ class ORKTabletop(object):
 
         # obtain Table corners ...
         rospy.loginfo("Tables hull size %d", to.markers.__len__())
-        if to.markers.__len__() == 0:
+        if not to.markers:
             rospy.loginfo("No tables detected")
             return
         else:
