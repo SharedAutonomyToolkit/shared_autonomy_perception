@@ -24,7 +24,9 @@ from visualization_msgs.msg import MarkerArray
 import pointclouds
 
 class ORKTabletop(object):
-
+    """ Listens to the table and object messages from ORK. Provides ActionServer
+    that assembles table and object into same message. 
+    NB - the table is an axis-aligned bounding box in the kinect's frame"""
     def __init__(self, name):
 
         self.sub = rospy.Subscriber("/recognized_object_array", RecognizedObjectArray, self.callback)
@@ -54,8 +56,7 @@ class ORKTabletop(object):
     def callback(self, data):
         rospy.loginfo("Objects %d", data.objects.__len__())
 
-        # list of points in table (I think ...)
-        table_points = []
+        table_corners = []
 
         # obtain table_offset and table_pose
         to = rospy.wait_for_message(self.table_topic, MarkerArray);
@@ -66,40 +67,38 @@ class ORKTabletop(object):
             rospy.loginfo("No tables detected")
             return
         else:
-            # TODO: What does this magic number signify?
-            # TODO: Are we guaranteed that the first marker will be the one we want?
-            point_array_size = 4
+            # NB - D says that ORK has this set to filter based on height.
+            # IIRC, it's 0.6-0.8m above whatever frame is set as the floor
+            point_array_size = 4      # for the 4 corners of the bounding box
             for i in range (0, point_array_size):
                 p = Point()
                 p.x = to.markers[0].points[i].x
                 p.y = to.markers[0].points[i].y
                 p.z = to.markers[0].points[i].z
-                table_points.append(p)
+                table_corners.append(p)
             # this is a table pose at the edge close to the robot, in the center of x axis
             table_pose = PoseStamped()
             table_pose.header = to.markers[0].header
             table_pose.pose = to.markers[0].pose
             
         # Determine table dimensions
-        # TODO: doesn't this assume that the table is axis-aligned in the original frame, since we haven't transformed it yet??
         rospy.loginfo('calculating table pose bounding box in frame: %s' % table_pose.header.frame_id)
         min_x = sys.float_info.max
         min_y = sys.float_info.max
         max_x = -sys.float_info.max
         max_y = -sys.float_info.max
 
-        for i in range (table_points.__len__()):
-            if table_points[i].x > max_x:
-                max_x = table_points[i].x
-            if table_points[i].y > max_y:
-                max_y = table_points[i].y
-            if table_points[i].x < min_x:
-                min_x = table_points[i].x
-            if table_points[i].y < min_y:
-                min_y = table_points[i].y
+        for i in range (table_corners.__len__()):
+            if table_corners[i].x > max_x:
+                max_x = table_corners[i].x
+            if table_corners[i].y > max_y:
+                max_y = table_corners[i].y
+            if table_corners[i].x < min_x:
+                min_x = table_corners[i].x
+            if table_corners[i].y < min_y:
+                min_y = table_corners[i].y
 
         table_dim = Point()
-        # we do not compute the height
         # TODO: if we don't (can't!) compute the height, should we at least give it non-zero depth? 
         # (would also require shifting the observed centroid down by table_dim.z/2)
         table_dim.z = 0.0
@@ -112,7 +111,6 @@ class ORKTabletop(object):
         table_link = 'table_link'
 
         # centroid of a table in table_link frame
-        # TODO: I'm not convinced that this is correct
         centroid = PoseStamped()
         centroid.header.frame_id = table_link
         centroid.header.stamp = table_pose.header.stamp
@@ -124,15 +122,14 @@ class ORKTabletop(object):
         centroid.pose.orientation.z = 0.0
         centroid.pose.orientation.w = 1.0
 
+        # generate transform from table_pose to our newly-defined table_link
         tt = TransformStamped()
-        # from table_pose to our newly-defined table_link
         tt.header = table_pose.header
         tt.child_frame_id = table_link
         tt.transform.translation = table_pose.pose.position
         tt.transform.rotation = table_pose.pose.orientation
         self.tl.setTransform(tt)
         self.tl.waitForTransform(table_link, table_pose.header.frame_id, table_pose.header.stamp, rospy.Duration(3.0))
-        # centroid of the table in head_mount_kinect_rgb_optical_frame
         if self.tl.canTransform(table_pose.header.frame_id, table_link, table_pose.header.stamp):
             centroid_table_pose = self.tl.transformPose(table_pose.header.frame_id, centroid)
             self.pose_pub.publish(centroid_table_pose)
@@ -140,8 +137,8 @@ class ORKTabletop(object):
             rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, table_link)
             return
 
-        cluster_list = []
         # transform each object into desired frame; add to list of clusters
+        cluster_list = []
         for i in range (data.objects.__len__()):
             rospy.loginfo("Point clouds %s", data.objects[i].point_clouds.__len__())
 
@@ -168,7 +165,7 @@ class ORKTabletop(object):
             pc_trans = PointCloud2()
             pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), 
                                                             table_pose.header.stamp, table_pose.header.frame_id)
-            # TODO: I think that this overwrites all but the last one...s.t. published objects simply flicker
+
             self.pub.publish(pc_trans)
             cluster_list.append(pc_trans)
             rospy.loginfo("cluster size %d", cluster_list.__len__())
