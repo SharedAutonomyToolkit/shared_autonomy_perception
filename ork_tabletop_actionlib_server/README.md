@@ -11,14 +11,15 @@ Install ORK:
 
 Install shared_autonomy_perception:
 
-  * `git clone git@github.com:SharedAutonomyToolkit/shared_autonomy_perception.git -b feature_ork_actionlib_server`
+  * `git clone git@github.com:SharedAutonomyToolkit/shared_autonomy_perception.git`
+  * `git clone git@github.com:bosch-ros-pkg/cluster_grasp_planner.git -b hydro-devel`
 
 Patch ORK:
 
-  * source catkin_hydro/devel/setup.bash
+  * source ~catkin_hydro/devel/setup.bash
   * roscd object_recognition_tabletop
   * patch -p1 -i \`rospack find ork_tabletop_actionlib_server\`/patch/clusters.patch
-  * cd catkin_hydro
+  * cd ~catkin_hydro
   * catkin_make
 
 ### Execution:
