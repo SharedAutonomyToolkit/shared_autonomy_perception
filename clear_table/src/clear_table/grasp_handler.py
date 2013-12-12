@@ -27,7 +27,7 @@ class GraspHandler():
             res = self.grasp_client(req)
         except rospy.ServiceException:
             print 'grasp server call failed'
-            return None
+            return []
 
         grasps = res.grasps
         self.show_grasps(grasps)
@@ -36,4 +36,5 @@ class GraspHandler():
     def show_grasps(self, grasps): 
         poses = [grasp.grasp_pose.pose for grasp in grasps] 
         self.draw_functions.clear_grasps()
-        self.draw_functions.draw_grasps(poses, grasps[0].grasp_pose.header.frame_id, pause = 0) 
+        if poses:
+            self.draw_functions.draw_grasps(poses, grasps[0].grasp_pose.header.frame_id, pause = 0)

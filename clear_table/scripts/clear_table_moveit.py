@@ -61,12 +61,11 @@ class GenerateGrasps(smach.State):
     
     def execute(self, userdata):
         grasps = self.gh.get_grasps(userdata.object_points)
-        if grasps is None:
+        if grasps:
+            userdata.grasps = grasps
+            return 'grasps_found'
+        else:
             return 'no_grasps'
-        
-        userdata.grasps = grasps
-        return 'grasps_found'
-
      
 class Pickup(smach.State):
     def __init__(self):
