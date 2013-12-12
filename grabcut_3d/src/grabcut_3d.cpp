@@ -599,6 +599,7 @@ void cv::grabCut3D( const Mat& img, const Mat& depth_img, Mat& mask, Rect rect,
         GCGraph<float> graph;
         assignGMMsComponents( img, depth_img, mask, bgdGMM, fgdGMM, compIdxs );
         learnGMMs( img, depth_img, mask, compIdxs, bgdGMM, fgdGMM );
+        // Here, we'd want to ALSO add the histogram components ... 
         constructGCGraph(img, depth_img, mask, bgdGMM, fgdGMM, lambda, leftW, upleftW, upW, uprightW, graph );
         estimateSegmentation( graph, mask );
     }

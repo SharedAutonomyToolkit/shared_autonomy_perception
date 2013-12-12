@@ -73,6 +73,9 @@ KinectAssembler::~KinectAssembler() {
 
 // TODO: Do I want fancier logic here where we can only send a given set of data once?
 void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& depth, const CameraInfoConstPtr& info, const PointCloud2ConstPtr& points) {
+  if (!has_data_) {
+    ROS_INFO("assemble_kinect has data set!");
+  }
   resp_.header.stamp = ros::Time::now();
   resp_.header.seq = num_frames_;
   num_frames_++;
@@ -81,6 +84,7 @@ void KinectAssembler::approxCB(const ImageConstPtr& image, const ImageConstPtr& 
   resp_.info = *info;
   resp_.points = *points;
   has_data_ = true;
+
 }
 
 bool KinectAssembler::serviceCB(shared_autonomy_msgs::KinectAssembly::Request &req,
