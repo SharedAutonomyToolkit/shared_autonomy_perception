@@ -28,8 +28,8 @@ class PickupHandler():
         pickup_goal.planning_options.planning_scene_diff.is_diff = True
         pickup_goal.planning_options.planning_scene_diff.robot_state.is_diff = True
         # commenting these out b/c not allowed by the moveit_commander interface
-        #pickup_goal.support_surface_name = "table"
-        #pickup_goal.allow_gripper_support_collision = True
+        pickup_goal.support_surface_name = "table"
+        pickup_goal.allow_gripper_support_collision = True
         pickup_goal.allowed_planning_time = 5.0
 
         # TODO: this shouldn't be required, I dont' think!

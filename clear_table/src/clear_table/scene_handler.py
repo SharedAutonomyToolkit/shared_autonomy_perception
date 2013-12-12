@@ -80,7 +80,7 @@ class SceneHandler():
             min_z = min(min_z, pt.z)
             max_z = max(max_z, pt.z)
         # testing whether fudging it helps
-        min_z = min_z + 0.05
+        #min_z = min_z + 0.05
         
         # add bounding box to the planning scene
         obj_pose = PoseStamped()
@@ -97,17 +97,18 @@ class SceneHandler():
 
         return (obj_pose, obj_dims)
 
-    def add_table(self, table_pose=[], table_dims = []):
+    def add_table(self, table_pose=[], table_dims=[]):
         # TODO: actually have this find the plane - for now, it just adds the pre-set table
-        if table_pose == []:
+        if not table_pose:
+            rospy.loginfo('adding default table!')
             table_pose = PoseStamped()
             table_pose.header.frame_id = "odom_combined"
             table_pose.pose.position.x = 0.55
             table_pose.pose.position.y = 0.0
             table_pose.pose.position.z = 0.75
             table_pose.pose.orientation.w = 1.0
+        if not table_dims:
             table_dims = Point()
-        if table_dims == []:
             table_dims.x = 0.7
             table_dims.y = 1.0
             table_dims.z = 0.05
