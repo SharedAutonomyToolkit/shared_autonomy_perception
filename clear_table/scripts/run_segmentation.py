@@ -6,7 +6,7 @@ import rospy
 
 import actionlib
 from cv_bridge import CvBridge
-import clear_table.handle_point_cloud2 as pts
+import sensor_msgs.point_cloud2 as pts
 
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction

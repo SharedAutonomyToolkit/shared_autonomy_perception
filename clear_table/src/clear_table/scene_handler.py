@@ -9,7 +9,7 @@ import sys
 import rospy
 import tf
 
-import clear_table.handle_point_cloud2 as pts
+import sensor_msgs.point_cloud2 as pts
 
 from geometry_msgs.msg import Point, PoseStamped, Vector3
 from moveit_msgs.msg import AttachedCollisionObject, CollisionObject, PlanningSceneWorld

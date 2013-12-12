@@ -6,7 +6,7 @@ import rospy
 
 import actionlib
 from cv_bridge import CvBridge
-import clear_table.handle_point_cloud2 as pts
+import sensor_msgs.point_cloud2 as pts
 
 from sensor_msgs.msg import PointCloud2
 from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
@@ -68,7 +68,6 @@ class SensorHandler():
             print e
             return []
 
-        # TODO: depend on the read_points that should be in common_msgs?
         # TODO: why didn't the uvs=idxs code work? x
         pt_gen = pts.read_points(data.points)#, uvs=idxs, skip_nans=True) # this didn't work!!
 
