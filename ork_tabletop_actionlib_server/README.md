@@ -10,7 +10,7 @@ Install shared_autonomy_perception:
 
 Install ORK:
 
-  * cd ~/catkin_hydro/src
+  * cd ~/catkin_hydro
   * wstool init src \`rospack find ork_tabletop_actionlib_server\`/patch/ork.install
   * cd src && wstool update -j8
   * cd .. && rosdep install --from-paths src -i -y
