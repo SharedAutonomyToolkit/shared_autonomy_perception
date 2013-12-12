@@ -63,11 +63,16 @@
   </group> <!-- end "if use_grabcut" -->
   <group unless="$(arg use_grabcut)">
     <!-- TODO: launch everything required for the ORK tabletop segmentation -->
+    <machine name="c1" address="c1" env-loader="/opt/ros/hydro/env.sh"/>
+    <!-- TODO: this requires having the ORK code compiled in more accounts than just Dejan's...
+    <node machine="c1" name="ork_tabletop_detection" pkg="object_recognition_core" type="detection" args="-c `rospack find object_recognition_tabletop`/conf/detection.object.ros.ork"/>
+-->
+    <node pkg="ork_tabletop_actionlib_server" type="ork_tabletop_actionlib_server.py" name="ork_tabletop"/>
   </group>
 
 
   <!-- and finally, start the state machine -->
-  <node name="run_clear_table" pkg="clear_table" type="clear_table_moveit.py" launch-prefix="xterm -e">
+  <node name="run_clear_table" pkg="clear_table" type="clear_table_unified.py" launch-prefix="xterm -e">
     <!-- TODO: also make these parameters, for easier restarting of state machine -->
     <remap from="assemble_kinect" to="$(arg kinect_name)/assemble_kinect"/>
     <remap from="segment_service" to="$(arg segment_service)"/>

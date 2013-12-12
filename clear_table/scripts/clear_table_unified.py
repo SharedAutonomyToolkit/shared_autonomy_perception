@@ -1,7 +1,10 @@
 #! /usr/bin/env python
 
+import random
+
 import rospy
 
+import actionlib
 import smach
 import smach_ros
 
@@ -10,6 +13,7 @@ from clear_table.grasp_handler import GraspHandler
 from clear_table.moveit_handler import PickupHandler, DropHandler
 from clear_table.scene_handler import SceneHandler
 from clear_table.sensor_handler import SensorHandler
+from shared_autonomy_msgs.msg import TabletopGoal, TabletopAction
 
 class Home(smach.State):
      def __init__(self):
@@ -17,9 +21,48 @@ class Home(smach.State):
      def execute(self, userdata):
          return 'at_home'
 
-class Segment(smach.State):
+class SegmentORK(smach.State):
      def __init__(self):
-         smach.State.__init__(self, outcomes=['done_segmenting', 'segmentation_failed', 'restart_segmentation'],
+         smach.State.__init__(self, outcomes=['done_segmenting', 'segmentation_failed', 'restart_segmentation', 'no_objects'],
+                              output_keys=['object_points', 'object_name'])
+
+         #self.sensors = SensorHandler()
+         self.scene = SceneHandler()
+         self.orkClient = actionlib.SimpleActionClient('ork_tabletop', TabletopAction)
+
+     def execute(self, userdata):
+         self.orkClient.wait_for_server()
+         goal = TabletopGoal()
+         self.orkClient.send_goal(goal)
+         self.orkClient.wait_for_result()
+         state = self.orkClient.get_state()
+         result = self.orkClient.get_result()
+         if state != GoalStatus.SUCCEEDED:
+             return 'segmentation_failed'
+
+         num_objs = len(result.objects)
+         if num_objs == 0:
+             return 'no_objects'
+
+         obj_idx = random.randrange(0, num_objs)
+         points = result.objects[obj_idx]
+         userdata.object_points = points
+         userdata.object_name = 'obj1'
+
+         # need to set up the planning scene ...
+         self.scene.clear_scene()
+         print result.table_pose
+         print result.table_dims
+         self.scene.add_table(result.table_pose, result.table_dims)
+         self.scene.add_object('obj1', points)
+         
+         print 'successful segmentation!'
+         return 'done_segmenting'
+
+
+class SegmentGrabcut(smach.State):
+     def __init__(self):
+         smach.State.__init__(self, outcomes=['done_segmenting', 'segmentation_failed', 'restart_segmentation', 'no_objects'],
                               output_keys=['object_points', 'object_name'])
 
          self.sensors = SensorHandler()
@@ -98,14 +141,26 @@ def main():
     rospy.init_node('clear_table')
     sm = smach.StateMachine(outcomes=['DONE'])
 
+    use_grabcut = rospy.get_param('clear_table_use_grabcut', True)
+
     with sm:
         smach.StateMachine.add('HOME', Home(),
                                transitions = {'at_home':'SEGMENT'})
+        # TODO: I'm not sure if this is the best pattern here.
+        # both of these classes are required to have the same SMACH interface.
+        if use_grabcut:
+            smach.StateMachine.add('SEGMENT', SegmentGrabcut(),
+                                   transitions = {'done_segmenting':'GENERATE_GRASPS',
+                                                  'segmentation_failed':'SEGMENT',
+                                                  'restart_segmentation':'SEGMENT',
+                                                  'no_objects':'DONE'})
+        else:
+            smach.StateMachine.add('SEGMENT', SegmentORK(),
+                                   transitions = {'done_segmenting':'GENERATE_GRASPS',
+                                                  'segmentation_failed':'SEGMENT',
+                                                  'restart_segmentation':'SEGMENT',
+                                                  'no_objects':'DONE'})
 
-        smach.StateMachine.add('SEGMENT', Segment(),
-                               transitions = {'done_segmenting':'GENERATE_GRASPS',
-                                              'segmentation_failed':'SEGMENT',
-                                              'restart_segmentation':'SEGMENT'})
         smach.StateMachine.add('GENERATE_GRASPS', GenerateGrasps(),
                                transitions = {'no_grasps':'HOME', 
                                               'grasps_found':'PICKUP'})
