@@ -17,10 +17,11 @@ Install ORK:
 
 Patch ORK:
 
+  * rospack profile
   * source ~catkin_hydro/devel/setup.bash
   * roscd object_recognition_tabletop
   * patch -p1 -i \`rospack find ork_tabletop_actionlib_server\`/patch/clusters.patch
-  * cd ~catkin_hydro
+  * cd ~/catkin_hydro
   * catkin_make
 
 ### Execution:
