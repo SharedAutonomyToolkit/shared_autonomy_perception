@@ -4,6 +4,8 @@
 # TODO: need to parameterize l/r arm for adding objects
 # TODO: also need to parameterize world frame ... 
 
+import sys
+
 import rospy
 import tf
 
@@ -67,12 +69,12 @@ class SceneHandler():
         pc_world = self.listener.transformPointCloud(world_frame, pc)
 
         # get world-axis-aligned bounding box
-        min_x = 100.0
-        max_x = -100.0
-        min_y = 100.0
-        max_y = -100.0
-        min_z = 100.0
-        max_z = -100.0
+        min_x = sys.float_info.max
+        max_x = sys.float_info.min
+        min_y = sys.float_info.max
+        max_y = sys.float_info.min
+        min_z = sys.float_info.max
+        max_z = sys.float_info.min
         for pt in pc_world.points:
             min_x = min(min_x, pt.x)
             max_x = max(max_x, pt.x)
