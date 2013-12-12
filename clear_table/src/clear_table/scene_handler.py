@@ -146,25 +146,6 @@ class SceneHandler():
         detach_object.link_name = "l_wrist_roll_link"
         detach_object.object.operation = detach_object.object.REMOVE
         self.attach_pub.publish(detach_object)
-        
-    def wait_for_object(self, obj_name):
-        """ On Tobias's suggestion, this function waits until the named 
-        object appears in the collision world from moveit"""
-        rospy.wait_for_service('get_planning_scene')
-        print "waiting for object %r to be added" % obj_name
-        has_object = False
-        rr = rospy.Rate(5.0) # 5 Hz
-        while (not rospy.is_shutdown()) and (not has_object):
-            req = GetPlanningSceneRequest()
-            req.components.components = req.components.WORLD_OBJECT_NAMES
-            # TODO: should be in try/except block
-            resp = self.scene_client(req)
-            for obj in resp.scene.world.collision_objects:
-                if obj.id == obj_name:
-                    print "Have object %r" % (obj_name)
-                    has_object = True
-                    break
-            rr.sleep()
                     
     def clear_scene(self):
         ps = PlanningSceneWorld()
