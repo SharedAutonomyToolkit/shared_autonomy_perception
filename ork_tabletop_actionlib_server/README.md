@@ -3,7 +3,7 @@ Steps to test this package:
 ### Setup 
 Install shared_autonomy_perception:
 
-  * mkdir catkin_hydro && cd catkin_hydro && mkdir src
+  * cd && mkdir catkin_hydro && cd catkin_hydro && mkdir src
   * cd ~/catkin_hydro/src
   * `git clone git@github.com:SharedAutonomyToolkit/shared_autonomy_perception.git`
   * `git clone git@github.com:bosch-ros-pkg/cluster_grasp_planner.git -b hydro-devel`
