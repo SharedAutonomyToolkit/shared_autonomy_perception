@@ -4,7 +4,7 @@ project(clear_table)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS actionlib rospy sensor_msgs shared_autonomy_msgs smach smach_ros)
+find_package(catkin REQUIRED COMPONENTS actionlib rospy cluster_grasp_planner moveit_msgs sensor_msgs shape_msgs shared_autonomy_msgs smach smach_ros)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS actionlib rospy sensor_msgs shared_auton
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 #######################################
 ## Declare ROS messages and services ##

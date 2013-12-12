@@ -242,6 +242,7 @@ bool Grabcut3dSegmentation::matFromRGBMessage(const sensor_msgs::Image& image_ms
   return true;
 }
 
+
 bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_msg, cv::Mat& depth) {
   cv_bridge::CvImagePtr cv_ptr;
   try {
@@ -255,12 +256,8 @@ bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_
 
   // handling depth images, and manually converting them, as described in:
   // http://answers.ros.org/question/10222/openni_camera-depth-image-opencv/
-  double scaled_depth;
-  if(cv_ptr->encoding != "32FC1") {
-    ROS_ERROR("Grabcut3dSegmentation::matFromDepthMessage expects depth to be 32FC1");
-    return false;
-  } 
-  else {
+  if(cv_ptr->encoding == "32FC1") { // this is used by groovy
+    double scaled_depth;
     depth = cv::Mat(cv_ptr->image.rows, cv_ptr->image.cols, CV_8UC1);
     for(int i = 0; i < cv_ptr->image.rows; i++) {
       float* Di = cv_ptr->image.ptr<float>(i);
@@ -277,6 +274,16 @@ bool Grabcut3dSegmentation::matFromDepthMessage(const sensor_msgs::Image& depth_
       }   
     }
   }
+  else if(cv_ptr->encoding == "16UC1") { // this is found in the hydro image_raw
+    // TODO: I *think* that these are in mm... so scaling the same way we did for 32fc1
+    int d_range = max_range_ - min_range_;
+    cv_ptr->image.convertTo(depth, CV_8UC1, 256.0/(1000*d_range), -min_range_/d_range);
+  }
+  else {
+    ROS_ERROR("Grabcut3dSegmentation::matFromDepthMessage expects depth to be 32FC1 or 16UC1. Instead, got: %s", cv_ptr->encoding.c_str());
+    return false;
+  }
+
   return true;
 }
 
