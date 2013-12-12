@@ -1,9 +1,6 @@
 # This is a utility class that handles all the sensor and PlanningScene interaction
 # for the clear_table state machine
 
-# TODO: need to parameterize l/r arm for adding objects
-# TODO: also need to parameterize world frame ... 
-
 import sys
 
 import rospy

@@ -76,6 +76,8 @@ class SensorHandler():
             for ii in range(data.points.width):
                 pt = pt_gen.next()
                 if not math.isnan(pt[0]):
+                    # From openCV, used by Grabcut to mask image. 
+                    # cv::GC_BGD = 0, cv::GC_FGD = 1, cv::GC_PR_BGD = 2, CV::GC_PR_FGC = 3
                     if (img[jj,ii] == 1 or img[jj,ii]==3):
                         out_pts.append(pt[0:3])
         print "done creating output point cloud"
