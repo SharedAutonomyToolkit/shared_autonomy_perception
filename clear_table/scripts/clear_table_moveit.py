@@ -37,7 +37,7 @@ class Segment(smach.State):
              return 'segmentation_failed'
 
          points = self.sensors.get_point_cloud(kinect_data, result.mask)
-         if points is None:
+         if not points:
              return 'segmentation_failed'
 
          userdata.object_points = points

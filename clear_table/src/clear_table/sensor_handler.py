@@ -66,7 +66,7 @@ class SensorHandler():
             img = mybridge.imgmsg_to_cv(mask)
         except CvBridgeError, e:
             print e
-            return None
+            return []
 
         # TODO: depend on the read_points that should be in common_msgs?
         # TODO: why didn't the uvs=idxs code work? x
