@@ -11,6 +11,7 @@ Install ORK:
 
 Install shared_autonomy_perception:
 
+  * cd ~/catkin_hydro/src
   * `git clone git@github.com:SharedAutonomyToolkit/shared_autonomy_perception.git`
   * `git clone git@github.com:bosch-ros-pkg/cluster_grasp_planner.git -b hydro-devel`
 
