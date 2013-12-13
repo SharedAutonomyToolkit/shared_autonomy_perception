@@ -103,7 +103,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
         //first display the new image so it's there when the dialog opens
         console.log('argh');
         console.log(goalMessage);
-        bboxImageViewer.updateDisplay(goalMessage.goal.image);
+        bboxImageViewer.updateDisplay(goalMessage.image);
 
         //open the dialog box
 	    that.bboxDiv.dialog("open");
