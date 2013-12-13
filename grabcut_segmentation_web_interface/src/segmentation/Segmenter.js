@@ -66,19 +66,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     	topic : editTopic
     });
 
-    //set up bbox topic subscriber
-    var bboxListener = new ROSLIB.Topic({
-	ros : ros, 
-	name : bboxTopic, 
-	messageType : 'sensor_msgs/Image'
-    });
-
-    var editListener = new ROSLIB.Topic({
-	ros : ros, 
-	name : editTopic, 
-	messageType : 'sensor_msgs/Image'
-    });
-
     this.bboxServer = new ROSLIB.SimpleActionServer({
 	ros : ros,
 	serverName : bboxService,
@@ -103,14 +90,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	that.editDiv.dialog("open");
     });
     
-    // Just here for debugging =) (since we expect messages and services)
-    bboxListener.subscribe(function(message){
-	console.log('bbox message');
-    });
-    editListener.subscribe(function(message){
-	console.log('edit message');
-    });
-
     //setup bbox button callbacks
     $('#grabcut-bbox')
 	.button()

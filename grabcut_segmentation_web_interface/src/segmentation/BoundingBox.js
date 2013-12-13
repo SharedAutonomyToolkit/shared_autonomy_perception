@@ -113,6 +113,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
                 that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
 
 	        //remove old rec so we can draw a new one
+		// TODO: is this required? or if I leave rect as var, can I just update it??
 	        if(rect) {
 		    that.stage.removeChild(rect);
 		    rect = null;
