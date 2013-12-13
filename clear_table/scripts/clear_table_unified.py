@@ -87,10 +87,14 @@ class SegmentGrabcut(smach.State):
          userdata.object_name = 'obj1'
 
          # need to set up the planning scene ...
-         self.scene.clear_scene()
-         self.scene.add_table()
-         self.scene.add_object('obj1', points)
+         #self.scene.clear_scene()
+         #self.scene.add_table()
+         #self.scene.add_object('obj1', points)
+         self.scene.update_scene(points)
          
+         rospy.loginfo('... sleeping')
+         rospy.sleep(5.0)
+
          print 'successful segmentation!'
          return 'done_segmenting'
 

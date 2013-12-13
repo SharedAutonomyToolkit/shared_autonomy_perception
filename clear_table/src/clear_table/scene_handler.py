@@ -154,3 +154,56 @@ class SceneHandler():
         #ps.octomap.octomap.data.append(0) #TOTAL HACK. I have no clue what this actually does ...
         ps.octomap.octomap.id = 'OcTree'
         self.scene_diff_pub.publish(ps)
+
+    def update_scene(self, points):
+        """ for debugging purposes, sends object, table and octomap clearing in same message"""
+        ps = PlanningSceneWorld()
+        # clear the octomap
+        ps.octomap.header.frame_id = 'odom_combined'
+        ps.octomap.octomap.id = 'OcTree'
+
+        # add object bounding box      
+        (box_pose, box_dims) = self.get_bounding_box(points)
+        bbox_primitive = SolidPrimitive()
+        bbox_primitive.type = bbox_primitive.BOX
+        bbox_primitive.dimensions = [box_dims.x, box_dims.y, box_dims.z]
+
+        bbox = CollisionObject()
+        bbox.id = 'obj1'
+        bbox.header.frame_id = box_pose.header.frame_id
+        bbox.operation = bbox.ADD
+        
+        bbox.primitives.append(bbox_primitive)
+        bbox.primitive_poses.append(box_pose.pose)
+        ps.collision_objects.append(bbox)
+
+        # and, table
+        table_pose = PoseStamped()
+        table_pose.header.frame_id = "odom_combined"
+        table_pose.pose.position.x = 0.55
+        table_pose.pose.position.y = 0.0
+        table_pose.pose.position.z = 0.75
+        table_pose.pose.orientation.w = 1.0
+        
+        table_dims = Point()
+        table_dims.x = 0.7
+        table_dims.y = 1.0
+        table_dims.z = 0.05
+
+        table_primitive = SolidPrimitive()
+        table_primitive.type = table_primitive.BOX
+        # TODO: this is a hack to make the buffer bigger.
+        # By default, it appears to be 10cm x 10cm x 0cm, but I'm not sure which dimension is which
+        table_primitive.dimensions = [table_dims.x, table_dims.y, table_dims.z]
+
+        table = CollisionObject()
+        table.id = 'table'
+        table.header.frame_id = table_pose.header.frame_id
+        table.operation = table.ADD
+        
+        table.primitives.append(table_primitive)
+        table.primitive_poses.append(table_pose.pose)
+        ps.collision_objects.append(table)
+
+        self.scene_diff_pub.publish(ps)
+        

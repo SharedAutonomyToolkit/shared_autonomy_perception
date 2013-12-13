@@ -9,7 +9,7 @@
   <arg name="use_im" default="false"/>
   <arg name="use_grasp_db" default="false"/>
 
-
+  <machine name="c1" address="c1" env-loader="/opt/ros/hydro/env.sh"/>
 
   <!-- Export arguments for use by the actual clear_table state machine 
        I'm doing this here s.t. it's possible to restart the state machine w/o a launch file -->
@@ -63,7 +63,7 @@
   </group> <!-- end "if use_grabcut" -->
   <group unless="$(arg use_grabcut)">
     <!-- TODO: launch everything required for the ORK tabletop segmentation -->
-    <machine name="c1" address="c1" env-loader="/opt/ros/hydro/env.sh"/>
+
     <!-- TODO: this requires having the ORK code compiled in more accounts than just Dejan's...
     <node machine="c1" name="ork_tabletop_detection" pkg="object_recognition_core" type="detection" args="-c `rospack find object_recognition_tabletop`/conf/detection.object.ros.ork"/>
 -->
