@@ -36,8 +36,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     document.getElementById(divID).appendChild(this.canvas);
 
     this.stage = new createjs.Stage(this.canvas);
-    //console.log(this.canvas);
-    //console.log(this.stage);
     var context = this.canvas.getContext('2d');
 
     this.canvas.style.background = '#aaaaaa';
@@ -54,15 +52,9 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
 
     // vars used by the mouseEventHandler
     // TODO: I'm not sure when to use this./that. vs just 'var'...
-    var rightMouseDown = false;
-    var leftMouseDown = false;
-    var firstClick = null;
-    var position = null;
-    var positonVec3 = null;
-    var rect = null;
+    var mouseDown = false;
 
     // left drag FG, right drag BG
-    // TODO: how to handle arrays?
     this.foreground = [];
     this.background = [];
 
@@ -74,100 +66,73 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.bgLine = new createjs.Shape();
     this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
     this.stage.addChild(this.bgLine);
+
+    this.label = 'none'
     // example from:
     // https://github.com/CreateJS/EaselJS/blob/master/examples/CurveTo.html
+    // TODO: the curveTois probably overkill. just lineTo, maybe?
     var oldPt;
     var oldMidPt;
-    /** 
-     * Updates and redraws the current bounding-box for every mouse event.
-     * Modifies that.bounds to save the coordinates
-     */
-    var mouseEventHandler = function (event, mouseEvent){
-	// any click resets the current list of points that needs to be drawn
-	// releasing the mouse button appends the list to the correct FG/BG
-	// TODO; it's ugly how this is in parallel for left/right clicks
-	// TODO: I liked the pattern that used the down click to create a callback
-	// for mousemove, and the mouseup to remove tha tcallback
-	if( mouseEvent === 'leftdown') {
-	    console.log('left down');
-	    rightMouseDown = false;
-	    leftMouseDown = true;
-            oldPt = new createjs.Point(event.stageX, event.stageY);
-            oldMidPt = oldPt;
-	} else if (mouseEvent === 'rightdown') {
-            //if mouse is pushed down get the position and save it
-	    console.log(mouseEvent);
-	    rightMouseDown = true;
-	    leftMouseDown = false;
-            oldPt = new createjs.Point(event.stageX, event.stageY);
-            oldMidPt = oldPt;
-	} else if ((mouseEvent === 'leftmove') && (leftMouseDown === true)) {
-	    var currentClick={x: event.stageX, y: event.stageY};
-            // TODO: these vars are currently unused. 
-            // Sarah says that this magically maps coordinates to ROS coordinates =)
+    function mouseMoveEventHandler(event) {
+        console.log('mouse moved!');
+	    var currentClick={u: Math.round(event.stageX), v: Math.round(event.stageY)};
+        // TODO: these vars are currently unused. 
+        // Sarah says that this magically maps coordinates to ROS coordinates =)
 	    var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
 	    currentPosVec3 = new ROSLIB.Vector3(currentPos);
 		
-	    that.foreground.push(currentClick);
-
-	    // TODO; figure out how to draw a list of points!
-            var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
-
-	    // TODO: this is probably overkill. just do lineTo?
+        var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
+        
+        if(that.label === 'foreground') {
+	        that.foreground.push(currentClick);
             that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+        } else if(that.label === 'background') {
+	        that.background.push(currentClick);
+            that.bgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+        }
+        oldPt.x = event.stageX;
+        oldPt.y = event.stageY;
+        
+        oldMidPt.x = midPt.x;
+        oldMidPt.y = midPt.y;
+        
+        that.stage.update();
+    }
 
-            oldPt.x = event.stageX;
-            oldPt.y = event.stageY;
+    function mouseDownEventHandler(event) {
+	    console.log('down');
+	    mouseDown = true;
+        oldPt = new createjs.Point(event.stageX, event.stageY);
+        oldMidPt = oldPt;
+        that.stage.addEventListener('stagemousemove', mouseMoveEventHandler);
+    }
 
-            oldMidPt.x = midPt.x;
-            oldMidPt.y = midPt.y;
-
-            that.stage.update();
-
-	} else if((mouseEvent === 'rightmove') && (rightMouseDown === true)) {
-	    console.log('right mouse drag NYI');
-        } else if(mouseEvent === 'leftup' && leftMouseDown) {
-	    leftMouseDown = false;
-	    console.log(that.foreground);
-	} else if(mouseEvent === 'rightup' && rightMouseDown) {
-	    rightMouseDown = false;
-	    console.log(that.background);
-        } else {
-	    // (or mouseup) incompatible combination of event and mouse state', mouseEvent, leftMouseDown, rightMouseDown
-	}
-    }; // end of mouseEventHandler
-
+    function  mouseUpEventHandler(event) {
+        console.log('up');
+	    mouseDown = false;
+        that.stage.removeEventListener('stagemousemove', mouseMoveEventHandler);
+    }
 
     //set up callbacks for the canvas
-    this.stage.addEventListener('stagemousedown', function(event) {
-	if(event.nativeEvent.button === 2) {
-            mouseEventHandler(event,'rightdown');
-	} else {
-	    mouseEventHandler(event,'leftdown');
-	}	
-    });
-
-    this.stage.addEventListener('stagemousemove', function(event) {
-        mouseEventHandler(event,'move');
-	if(event.nativeEvent.button === 2) {
-            mouseEventHandler(event,'rightmove');
-	} else {
-	    mouseEventHandler(event,'leftmove');
-	}
-    });
-
-    this.stage.addEventListener('stagemouseup', function(event) {
-	if(event.nativeEvent.button === 2) {
-            mouseEventHandler(event,'rightup');
-	} else {
-            mouseEventHandler(event,'leftup');
-	}
-    });
+    this.stage.addEventListener('stagemousedown', mouseDownEventHandler);
+    this.stage.addEventListener('stagemouseup', mouseUpEventHandler);
 };
 
 
-GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getbounds = function() {
-    return this.bounds;
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
+    var result = {fg : this.foreground, bg : this.background};
+    // reset state
+    this.foreground = [];
+    this.background = [];
+    this.label = 'none';
+    // removing the lines we've added, but leaving ready to draw again
+    this.fgLine.graphics.clear();
+    this.fgLine.graphics.beginStroke("#F00").setStrokeStyle(3,"round");
+    this.bgLine.graphics.clear();
+    this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
+    this.stage.update();
+    
+    return result;
 }
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
@@ -189,10 +154,19 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.changeStream = function(topic) {
     }
     this.image.src = src;
     // emit an event for the change
+    // TODO; what listens to this?
     this.emit('change', topic);
 
     //trying out bitmap easel thing
     var imagebitmap = new createjs.Bitmap(this.image);
     console.log('bitmap');
     this.stage.addChild(imagebitmap);
+
 };
+
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setForeground = function() {
+    this.label = 'foreground';
+}
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setBackground = function() {
+    this.label = 'background';
+}

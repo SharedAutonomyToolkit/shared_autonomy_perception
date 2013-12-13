@@ -52,8 +52,9 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     });
     
 
+
     this.bboxDiv.html('<div id="' + bboxCanvasId + '"><canvas id ="' + bboxCanvas + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
-    this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button>');
+    this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
 
 
@@ -138,24 +139,30 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     //setup edit button callbacks
     $('#grabcut-edit')
-	.button()
-	.click(function(event){
+	    .button()
+	    .click(function(event){
 	    console.log("clicked segmentation button - testing");
-	    // TODO: Do I need logic that makes sure that we have
-	    // valid bounds? what should happen if they're bad?
-            var bounds = editViewer.getbounds();
+	        // TODO: Do I need logic that makes sure that we have
+	        // valid bounds? what should happen if they're bad?
+            var result = editViewer.getlabels();
 
-            var result = {
-                min_row : {data : Math.round(bounds.y)},
-                max_row : {data : Math.round(bounds.y + bounds.dy)},
-		min_col : {data : Math.round(bounds.x)},
-                max_col : {data : Math.round(bounds.x + bounds.dx)}
-            };
-
-	    that.editServer.setSucceeded(result);
+	        that.editServer.setSucceeded(result);
             console.log("... set succeeded with: ");
             console.log(result);
 	    that.editDiv.dialog("close");
 	});
+
+    $('#edit-foreground')
+        .button()
+        .click(function(event) {
+            console.log("Now editing FG pixels");
+            editViewer.setForeground();
+        });
+    $('#edit-background')
+        .button()
+        .click(function(event) {
+            console.log("Now editing BG pixels");
+            editViewer.setBackground();
+        });
 
 };
