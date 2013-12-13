@@ -50,7 +50,11 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.__proto__ = EventEmitter2.prototype
 GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     console.log("update display");
 
-    if (img.encoding != 'rgb8' && img.encoding != 'bgr8' ) return;
+    if (img.encoding != 'rgb8' && img.encoding != 'bgr8' ) {
+        console.log('unrecognized image encoding!');
+        console.log(img.encoding);
+        return;
+    }
     
     //get the image data
     var imgWidth = img.width;
@@ -62,6 +66,7 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     if (this.src == null ||
 	    this.srcWidth != imgWidth ||
 	    this.srcHeight != imgHeight) {
+
 	    var div = document.createElement('div');
 	    div.innerHTML = '<canvas width="'+ imgWidth + '" height="' + imgHeight + '"></canvas>';
 	    this.src = div.firstChild;
@@ -74,8 +79,8 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     }
 
     //Set up the images
-    var i = 0;
-    var j = 0;   
+    var i = 0; // index into ROS image
+    var j = 0; // index into JS image (rgba?)
     if( img.encoding == 'rgb8'){
 	    while(i < imgLen) {
 	        for (var k = 0; k < 3; k++) {
@@ -87,7 +92,7 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
 	        j += 4;
 	    }
     }
-    else {
+    else { // bgr8?
 	    while( i < imgLen) {
 
 	        this.srcPixels[j+0] = imgPixels.charCodeAt(i+2);
@@ -98,8 +103,8 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
 	        
 	        i += 3;
 	        j += 4;
-	    }
-    }
+        }
+	}
 
     //Copy
     this.srcContex.putImageData(this.srcData,0,0);
