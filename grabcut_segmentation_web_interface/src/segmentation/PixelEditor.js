@@ -54,8 +54,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
 
     // vars used by the mouseEventHandler
     // TODO: I'm not sure when to use this./that. vs just 'var'...
-    var rightMouseDown = false;
-    var leftMouseDown = false;
+    var mouseDown = false;
     var firstClick = null;
     var position = null;
     var positonVec3 = null;
@@ -74,6 +73,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.bgLine = new createjs.Shape();
     this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
     this.stage.addChild(this.bgLine);
+    this.label = 'none'
     // example from:
     // https://github.com/CreateJS/EaselJS/blob/master/examples/CurveTo.html
     var oldPt;
@@ -83,91 +83,71 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
      * Modifies that.bounds to save the coordinates
      */
     var mouseEventHandler = function (event, mouseEvent){
-	// any click resets the current list of points that needs to be drawn
-	// releasing the mouse button appends the list to the correct FG/BG
-	// TODO; it's ugly how this is in parallel for left/right clicks
-	// TODO: I liked the pattern that used the down click to create a callback
-	// for mousemove, and the mouseup to remove tha tcallback
-	if( mouseEvent === 'leftdown') {
-	    console.log('left down');
-	    rightMouseDown = false;
-	    leftMouseDown = true;
+	    // TODO: I liked the pattern that used the down click to create a callback
+	    // for mousemove, and the mouseup to remove that callback
+	    if( mouseEvent === 'down') {
+	        console.log('down');
+	        mouseDown = true;
             oldPt = new createjs.Point(event.stageX, event.stageY);
             oldMidPt = oldPt;
-	} else if (mouseEvent === 'rightdown') {
-            //if mouse is pushed down get the position and save it
-	    console.log(mouseEvent);
-	    rightMouseDown = true;
-	    leftMouseDown = false;
-            oldPt = new createjs.Point(event.stageX, event.stageY);
-            oldMidPt = oldPt;
-	} else if ((mouseEvent === 'leftmove') && (leftMouseDown === true)) {
-	    var currentClick={x: event.stageX, y: event.stageY};
+	    } else if ((mouseEvent === 'move') && (mouseDown === true)) {
+            // to match the expected Pixel message type
+	        var currentClick={u: Math.round(event.stageX), v: Math.round(event.stageY)};
             // TODO: these vars are currently unused. 
             // Sarah says that this magically maps coordinates to ROS coordinates =)
-	    var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
-	    currentPosVec3 = new ROSLIB.Vector3(currentPos);
-		
-	    that.foreground.push(currentClick);
-
-	    // TODO; figure out how to draw a list of points!
+	        var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
+	        currentPosVec3 = new ROSLIB.Vector3(currentPos);
+		    
             var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
-
-	    // TODO: this is probably overkill. just do lineTo?
-            that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
-
+            
+            if(that.label === 'foreground') {
+	            that.foreground.push(currentClick);
+	            // TODO: this is probably overkill. just do lineTo?
+                that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+            } else if(that.label === 'background') {
+	            that.background.push(currentClick);
+	            // TODO: this is probably overkill. just do lineTo?
+                that.bgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+            }
             oldPt.x = event.stageX;
             oldPt.y = event.stageY;
-
+            
             oldMidPt.x = midPt.x;
             oldMidPt.y = midPt.y;
-
+            
             that.stage.update();
-
-	} else if((mouseEvent === 'rightmove') && (rightMouseDown === true)) {
-	    console.log('right mouse drag NYI');
-        } else if(mouseEvent === 'leftup' && leftMouseDown) {
-	    leftMouseDown = false;
-	    console.log(that.foreground);
-	} else if(mouseEvent === 'rightup' && rightMouseDown) {
-	    rightMouseDown = false;
-	    console.log(that.background);
-        } else {
-	    // (or mouseup) incompatible combination of event and mouse state', mouseEvent, leftMouseDown, rightMouseDown
-	}
+            
+        } else if(mouseEvent === 'up') {
+            console.log('up');
+	        mouseDown = false;
+        } else { 
+            // mouse moving w/o button pressed
+	    }
     }; // end of mouseEventHandler
 
 
     //set up callbacks for the canvas
     this.stage.addEventListener('stagemousedown', function(event) {
-	if(event.nativeEvent.button === 2) {
-            mouseEventHandler(event,'rightdown');
-	} else {
-	    mouseEventHandler(event,'leftdown');
-	}	
+	    mouseEventHandler(event,'down');
     });
 
     this.stage.addEventListener('stagemousemove', function(event) {
         mouseEventHandler(event,'move');
-	if(event.nativeEvent.button === 2) {
-            mouseEventHandler(event,'rightmove');
-	} else {
-	    mouseEventHandler(event,'leftmove');
-	}
     });
 
     this.stage.addEventListener('stagemouseup', function(event) {
-	if(event.nativeEvent.button === 2) {
-            mouseEventHandler(event,'rightup');
-	} else {
-            mouseEventHandler(event,'leftup');
-	}
+        mouseEventHandler(event,'up');
     });
 };
 
 
-GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getbounds = function() {
-    return this.bounds;
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
+    var result = {fg : this.foreground, bg : this.background};
+    this.foreground = [];
+    this.background = [];
+    this.label = 'none';
+    console.log(result);
+    return result;
 }
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
@@ -196,3 +176,12 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.changeStream = function(topic) {
     console.log('bitmap');
     this.stage.addChild(imagebitmap);
 };
+
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setForeground = function() {
+    console.log('...in PixelEditor, setting label to FG');
+    this.label = 'foreground';
+}
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setBackground = function() {
+    console.log('...in PixelEditor, setting label to BG');
+    this.label = 'background';
+}
