@@ -9,61 +9,56 @@
 
 /*global $:false */
 
+
+/* This sets up two different SimpleActionServers, one that has the user
+ * input a bounding box, and one that get individual pixel labels 
+ */
 GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var that = this;
 
     options = options || {};
     var ros = options.ros;
     var host = options.host || 'localhost';
-    var cameraTopic = options.cameraTopic;
+    var bboxTopic = options.bboxTopic;
+    var bboxService = options.bboxService;
     var editTopic = options.editTopic;
-    this.segmentationDiv = $('#' + options.segmentationDiv);
+    var editService = options.editService;
+
+    this.bboxDiv = $('#' + options.bboxDiv);
     this.editDiv = $('#' + options.editDiv);
     var canvasWidth = options.canvasWidth;
     var canvasHeight = options.canvasHeight;
 
+    // need 3 states - bbox, edit, idle
     this.widgetState = 'segement';
     this.Lock = false;
 
-    var segmentationCanvasId = 'grabcut-segmentation-canvas';
+    // needs to match the divs declared in interactive_segmentation_interface.html
+    var bboxCanvasId = 'grabcut-bbox-canvas';
     var editCanvasId = 'grabcut-edit-canvas';
 
     //add canvas and buttons to the window
-    this.segmentationDiv.dialog({
+    this.bboxDiv.dialog({
 	autoOpen : false,
 	width : canvasWidth,
 	height : canvasHeight
     });
     
-    this.editDiv.dialog({
-	autoOpen : false
-    });
 
-    this.segmentationDiv.html('<div id="' + segmentationCanvasId + '"><\/div> <br> <br><button id="grabcut-segmentation">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
-    this.editDiv.html( '<div id="' + editCanvasId +  '"><\/div> <br><br><button id="grabcut-edit-segmentation">Send</button> <button id="grabcut-edit-reset">Reset</button>');
+    this.bboxDiv.html('<div id="' + bboxCanvasId + '"><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
 
-    var segmentationViewer = new GRABCUTSEGMENTATIONLIB.Selector({
-    	divID : segmentationCanvasId,
+    var bboxViewer = new GRABCUTSEGMENTATIONLIB.Selector({
+    	divID : bboxCanvasId,
     	host : host,
     	width : canvasWidth,
     	height : canvasHeight,
-    	topic : cameraTopic
+    	topic : bboxTopic
     });
 
-    //todo change this to edit object
-    var editViewer = new MJPEGCANVAS.Viewer({
-    	divID : editCanvasId,
-   	host : host,
-    	width : canvasWidth,
-    	height : canvasHeight,
-    	topic : editTopic
-    });
-
-    
-    //set up  camera topic subscriber
-    var cameraListener = new ROSLIB.Topic({
+    //set up bbox topic subscriber
+    var bboxListener = new ROSLIB.Topic({
 	ros : ros, 
-	name : cameraTopic, 
+	name : bboxTopic, 
 	messageType : 'sensor_msgs/Image'
     });
 
@@ -75,21 +70,21 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     //console.log(cameraListener);
     
-    cameraListener.subscribe(function(message){
+    bboxListener.subscribe(function(message){
 	that.widgetState = 'segment';
-	console.log('cameramessage');
+	console.log('bbox message');
         // TODO: seems like this should only happen on the first? 
         // or do subsequent calls update the image?
-	that.segmentationDiv.dialog("open");
+	that.bboxDiv.dialog("open");
     });
 
-    //setup camera button callbacks
+    //setup bbox button callbacks
     $('#grabcut-segmentation')
 	.button()
 	.click(function(event){
 	    console.log("clicked segmentation button - testing");
             console.log("testing...");
-            var bounds = segmentationViewer.getbounds();
+            var bounds = bboxViewer.getbounds();
             console.log(bounds);
 
             var msg = new ROSLIB.Message({
@@ -108,32 +103,4 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	.click(function(even){
 	    console.log("clicked reset button");
 	});
-
-    //set up subscriber to edit topic
-    var editListener = new ROSLIB.Topic({
-	ros : ros, 
-	name : editTopic, 
-	messageType : 'sensor_msgs/Image' 
-    });
-
-    editListener.subscribe(function(message){
-	that.widgetState = 'edit';
-	that.editDiv.dialog();
-    });
-
-    $('#grabcut-edit-segmentation')
-	.button()
-	.click(function(even){
-	    console.log("clicked edit segmentation button");
-	});
-
-    $('#grabcut-edit-reset')
-	.button()
-	.click(function(even){
-	    console.log("clicked edit reset button");
-	});
-
-
-    
-
 };

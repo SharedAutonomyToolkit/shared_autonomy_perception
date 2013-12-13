@@ -44,9 +44,11 @@ function init() {
   var segmenter= new GRABCUTSEGMENTATIONLIB.Segmenter({
     ros : ros, 
     host : 'localhost',
-    cameraTopic : '/kinect_image',
+    bboxTopic : '/kinect_image',
+    bboxService : '/get_bounding_box',
     editTopic : '/kinect_image_fake',
-    segmentationDiv : 'image-segmentation-window',
+    editService : '/edit_pixel_labels',
+    bboxDiv : 'bbox-segmentation-window',
     editDiv : 'edit-segmentation-window',
     canvasWidth : 640,
     canvasHeight : 480
@@ -61,7 +63,7 @@ function init() {
   <h1>Interactive Segmentation</h1>
   <div id="mjpeg"></div>
 
-  <div id="image-segmentation-window"></div>
+  <div id="bbox-segmentation-window"></div>
   <div id="edit-segmentation-window"></div>
 
 </body>
