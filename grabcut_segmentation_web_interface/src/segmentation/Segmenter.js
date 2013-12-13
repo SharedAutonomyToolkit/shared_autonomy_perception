@@ -29,10 +29,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var canvasWidth = options.canvasWidth;
     var canvasHeight = options.canvasHeight;
 
-    // need 3 states - bbox, edit, idle
-    this.widgetState = 'segement';
-    this.Lock = false;
-
     // needs to match the divs declared in interactive_segmentation_interface.html
     var bboxCanvasId = 'grabcut-bbox-canvas';
     var editCanvasId = 'grabcut-edit-canvas';
@@ -68,14 +64,31 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
         messageType : "shared_autonomy_msgs/BoundingBox"
     });
 
+
+    this.bboxServer = new ROSLIB.SimpleActionServer({
+	ros : ros,
+	serverName : bboxService,
+	actionName : 'shared_autonomy_msgs/BoundingBoxAction'
+    });
+    console.log(this.bboxServer);
     //console.log(cameraListener);
+
+    // TODo; eventually, we hope to be able to pass image from this into 
+    // the Selector, but for now, we have to assume that it'll have
+    // received an image as well ...
+    this.bboxServer.on('goal', function(goalMessage) {
+	console.log('bbox service call')
+	that.bboxDiv.dialog("open");
+    });
     
+    // OH! Unlike with the IM stuff, there's no reason that we can't 
+ // have both bbox and edit windows open at once... but only one of each.
+// this really needs to be the SAS callback ... 
     bboxListener.subscribe(function(message){
-	that.widgetState = 'segment';
 	console.log('bbox message');
         // TODO: seems like this should only happen on the first? 
         // or do subsequent calls update the image?
-	that.bboxDiv.dialog("open");
+//	that.bboxDiv.dialog("open");
     });
 
     //setup bbox button callbacks
