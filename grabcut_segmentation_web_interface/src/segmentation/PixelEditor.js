@@ -36,8 +36,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     document.getElementById(divID).appendChild(this.canvas);
 
     this.stage = new createjs.Stage(this.canvas);
-    //console.log(this.canvas);
-    //console.log(this.stage);
     var context = this.canvas.getContext('2d');
 
     this.canvas.style.background = '#aaaaaa';
@@ -55,13 +53,8 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     // vars used by the mouseEventHandler
     // TODO: I'm not sure when to use this./that. vs just 'var'...
     var mouseDown = false;
-    var firstClick = null;
-    var position = null;
-    var positonVec3 = null;
-    var rect = null;
 
     // left drag FG, right drag BG
-    // TODO: how to handle arrays?
     this.foreground = [];
     this.background = [];
 
@@ -128,6 +121,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     var result = {fg : this.foreground, bg : this.background};
+    // reset state
     this.foreground = [];
     this.background = [];
     this.label = 'none';
@@ -160,19 +154,19 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.changeStream = function(topic) {
     }
     this.image.src = src;
     // emit an event for the change
+    // TODO; what listens to this?
     this.emit('change', topic);
 
     //trying out bitmap easel thing
     var imagebitmap = new createjs.Bitmap(this.image);
     console.log('bitmap');
     this.stage.addChild(imagebitmap);
+
 };
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setForeground = function() {
-    console.log('...in PixelEditor, setting label to FG');
     this.label = 'foreground';
 }
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setBackground = function() {
-    console.log('...in PixelEditor, setting label to BG');
     this.label = 'background';
 }
