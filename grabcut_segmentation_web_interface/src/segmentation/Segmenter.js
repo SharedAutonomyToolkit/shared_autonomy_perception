@@ -40,8 +40,15 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	height : canvasHeight
     });
     
+    this.editDiv.dialog({
+	autoOpen : false,
+	width : canvasWidth,
+	height : canvasHeight
+    });
+    
 
     this.bboxDiv.html('<div id="' + bboxCanvasId + '"><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
+    this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button>');
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
     	divID : bboxCanvasId,
@@ -51,10 +58,24 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     	topic : bboxTopic
     });
 
+    var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
+    	divID : editCanvasId,
+    	host : host,
+    	width : canvasWidth,
+    	height : canvasHeight,
+    	topic : editTopic
+    });
+
     //set up bbox topic subscriber
     var bboxListener = new ROSLIB.Topic({
 	ros : ros, 
 	name : bboxTopic, 
+	messageType : 'sensor_msgs/Image'
+    });
+
+    var editListener = new ROSLIB.Topic({
+	ros : ros, 
+	name : editTopic, 
 	messageType : 'sensor_msgs/Image'
     });
 
@@ -64,6 +85,12 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	actionName : 'shared_autonomy_msgs/BoundingBoxAction'
     });
 
+    this.editServer = new ROSLIB.SimpleActionServer({
+	ros : ros,
+	serverName : editService,
+	actionName : 'shared_autonomy_msgs/EditPixelAction'
+    });
+
     // TODo; eventually, we hope to be able to pass image from this into 
     // the BoundingBox, but for now, we have to assume that it'll have
     // received an image as well ...
@@ -71,10 +98,17 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	console.log('bbox service call')
 	that.bboxDiv.dialog("open");
     });
+    this.editServer.on('goal', function(goalMessage) {
+	console.log('edit service call')
+	that.editDiv.dialog("open");
+    });
     
     // Just here for debugging =) (since we expect messages and services)
     bboxListener.subscribe(function(message){
 	console.log('bbox message');
+    });
+    editListener.subscribe(function(message){
+	console.log('edit message');
     });
 
     //setup bbox button callbacks
@@ -100,9 +134,27 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	    // TODO: somehow need to clear the bbox so it doesn't pop on the next request. (however, that made the window show up immediately, so maybe we should have a tiny one by default?)
 	});
 
-    $('#grabcut-reset')
+
+    //setup edit button callbacks
+    $('#grabcut-edit')
 	.button()
-	.click(function(even){
-	    console.log("clicked reset button");
+	.click(function(event){
+	    console.log("clicked segmentation button - testing");
+	    // TODO: Do I need logic that makes sure that we have
+	    // valid bounds? what should happen if they're bad?
+            var bounds = editViewer.getbounds();
+
+            var result = {
+                min_row : {data : Math.round(bounds.y)},
+                max_row : {data : Math.round(bounds.y + bounds.dy)},
+		min_col : {data : Math.round(bounds.x)},
+                max_col : {data : Math.round(bounds.x + bounds.dx)}
+            };
+
+	    that.editServer.setSucceeded(result);
+            console.log("... set succeeded with: ");
+            console.log(result);
+	    that.editDiv.dialog("close");
 	});
+
 };
