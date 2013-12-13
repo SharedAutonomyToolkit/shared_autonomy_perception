@@ -9,7 +9,7 @@
 
 /*global $:false */
 
-GRABCUTSEGMENTATIONLIB.Selector = function(options){
+GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     // needed for passing `this` into nested functions
     var that = this;
 
@@ -147,18 +147,18 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 };
 
 
-GRABCUTSEGMENTATIONLIB.Selector.prototype.getbounds = function() {
+GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
     return this.bounds;
 }
 
-GRABCUTSEGMENTATIONLIB.Selector.prototype.__proto__ = EventEmitter2.prototype;
+GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.__proto__ = EventEmitter2.prototype;
 
 /**
  * Change the stream of this canvas to the given topic.
  *
  * @param topic - the topic to stream, like '/wide_stereo/left/image_color'
  */
-GRABCUTSEGMENTATIONLIB.Selector.prototype.changeStream = function(topic) {
+GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.changeStream = function(topic) {
     this.image = new Image();
     // create the image to hold the stream
     var src = 'http://' + this.host + ':' + this.port + '/snapshot?topic=' + topic;

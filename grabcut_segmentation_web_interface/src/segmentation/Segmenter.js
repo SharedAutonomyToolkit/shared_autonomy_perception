@@ -43,7 +43,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     this.bboxDiv.html('<div id="' + bboxCanvasId + '"><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
 
-    var bboxViewer = new GRABCUTSEGMENTATIONLIB.Selector({
+    var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
     	divID : bboxCanvasId,
     	host : host,
     	width : canvasWidth,
@@ -65,7 +65,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     });
 
     // TODo; eventually, we hope to be able to pass image from this into 
-    // the Selector, but for now, we have to assume that it'll have
+    // the BoundingBox, but for now, we have to assume that it'll have
     // received an image as well ...
     this.bboxServer.on('goal', function(goalMessage) {
 	console.log('bbox service call')
