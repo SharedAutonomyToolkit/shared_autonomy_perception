@@ -95,9 +95,10 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 	        var currentClick={x: event.stageX, y: event.stageY};
 
                 // TODO: these vars are currently unused. 
+                // Sarah says that this magically maps coordinates to ROS coordinates =)
 	        var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
 	        currentPosVec3 = new ROSLIB.Vector3(currentPos);
-
+		
 	        //calculate positions and rectangle information
 	        var squareStart = {x: firstClick.x, y: firstClick.y};
 	        if(firstClick.x > currentClick.x) {
@@ -108,6 +109,7 @@ GRABCUTSEGMENTATIONLIB.Selector = function(options){
 	        }
 	        var distancex = Math.abs(firstClick.x - currentClick.x);
 	        var distancey = Math.abs(firstClick.y - currentClick.y);
+
                 that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
 
 	        //remove old rec so we can draw a new one
