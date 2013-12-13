@@ -28,18 +28,22 @@ function init() {
     url : 'ws://sam:9090'
   });
 
+//subscribe to image message
+
+var canvas = document.getElementById("image-viewer");
+var stage = new createjs.Stage(canvas);
 
   //Create the a grabcut segmentation widget
   var viewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
     ros : ros,
     canvasID : "image-viewer",
+    stage : stage,  
     width : 640,
     height : 480
 
   });
 
 
-//subscribe to image message
 
 var listner = new ROSLIB.Topic({
   ros: ros, 
