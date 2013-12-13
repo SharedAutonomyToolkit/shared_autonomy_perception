@@ -54,109 +54,113 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
 
     // vars used by the mouseEventHandler
     // TODO: I'm not sure when to use this./that. vs just 'var'...
-    var mouseDown = false;
+    var rightMouseDown = false;
+    var leftMouseDown = false;
     var firstClick = null;
     var position = null;
     var positonVec3 = null;
     var rect = null;
-    this.bounds = null;
 
+    // left drag FG, right drag BG
+    // TODO: how to handle arrays?
+    this.foreground = [];
+    this.background = [];
+
+    // and, the display objects to show FG/BG.
+    // add them to stage here so can always remove in callback.
+    this.fgLine = new createjs.Shape();
+    this.fgLine.graphics.beginStroke("#F00").setStrokeStyle(3,"round");
+    this.stage.addChild(this.fgLine);
+    this.bgLine = new createjs.Shape();
+    this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
+    this.stage.addChild(this.bgLine);
+    // example from:
+    // https://github.com/CreateJS/EaselJS/blob/master/examples/CurveTo.html
+    var oldPt;
+    var oldMidPt;
     /** 
      * Updates and redraws the current bounding-box for every mouse event.
      * Modifies that.bounds to save the coordinates
      */
-    var mouseEventHandler = function (event, mouseState){
-	if( mouseState == 'down'){
+    var mouseEventHandler = function (event, mouseEvent){
+	// any click resets the current list of points that needs to be drawn
+	// releasing the mouse button appends the list to the correct FG/BG
+	// TODO; it's ugly how this is in parallel for left/right clicks
+	// TODO: I liked the pattern that used the down click to create a callback
+	// for mousemove, and the mouseup to remove tha tcallback
+	if( mouseEvent === 'leftdown') {
+	    console.log('left down');
+	    rightMouseDown = false;
+	    leftMouseDown = true;
+            oldPt = new createjs.Point(event.stageX, event.stageY);
+            oldMidPt = oldPt;
+	} else if (mouseEvent === 'rightdown') {
             //if mouse is pushed down get the position and save it
-	    console.log('mouse down');
-	    mouseDown = true;
-
-	    firstClick = { x: event.stageX, y:  event.stageY};
-
-            // TODO: these aren't used?
-	    position = that.stage.globalToRos(event.stageX, event.stageY);
-            positionVec3 = new ROSLIB.Vector3(position);
-            
-	    //remove previous rectangle
-            if (rect){
-                console.log('removing rect')
-		that.stage.removeChild(rect);
-		rect = null;
-                that.stage.update();
-                that.bounds = null;
-	    }
-	}
-        else if (mouseState === 'move') {
-            if (mouseDown === true) {
-	        //if mouse button is being held down:
-	        //get the current mouse position
-	        //calculate distance from start position
-	        
-	        var currentClick={x: event.stageX, y: event.stageY};
-
-                // TODO: these vars are currently unused. 
-                // Sarah says that this magically maps coordinates to ROS coordinates =)
-	        var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
-	        currentPosVec3 = new ROSLIB.Vector3(currentPos);
+	    console.log(mouseEvent);
+	    rightMouseDown = true;
+	    leftMouseDown = false;
+            oldPt = new createjs.Point(event.stageX, event.stageY);
+            oldMidPt = oldPt;
+	} else if ((mouseEvent === 'leftmove') && (leftMouseDown === true)) {
+	    var currentClick={x: event.stageX, y: event.stageY};
+            // TODO: these vars are currently unused. 
+            // Sarah says that this magically maps coordinates to ROS coordinates =)
+	    var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
+	    currentPosVec3 = new ROSLIB.Vector3(currentPos);
 		
-	        //calculate positions and rectangle information
-	        var squareStart = {x: firstClick.x, y: firstClick.y};
-	        if(firstClick.x > currentClick.x) {
-		    squareStart.x = currentClick.x;
-	        }
-	        if(firstClick.y > currentClick.y) {
-    		    squareStart.y = currentClick.y;
-	        }
-	        var distancex = Math.abs(firstClick.x - currentClick.x);
-	        var distancey = Math.abs(firstClick.y - currentClick.y);
+	    that.foreground.push(currentClick);
 
-                that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
+	    // TODO; figure out how to draw a list of points!
+            var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
 
-	        //remove old rec so we can draw a new one
-	        if(rect) {
-		    that.stage.removeChild(rect);
-		    rect = null;
-	        }
-                // and, draw new rectangle
-	        rect = new createjs.Shape();
-	        rect.graphics.beginStroke("#F00");
-	        rect.graphics.drawRect(squareStart.x, squareStart.y, distancex, distancey);
-	        that.stage.addChild(rect);
-	        that.stage.update();
-	    }
-        }
-        else { //mouseState === 'up'
-	    //if mouse button is up, stop updating square on mouse move
-	    mouseDown = false;
-        }
+	    // TODO: this is probably overkill. just do lineTo?
+            that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+
+            oldPt.x = event.stageX;
+            oldPt.y = event.stageY;
+
+            oldMidPt.x = midPt.x;
+            oldMidPt.y = midPt.y;
+
+            that.stage.update();
+
+	} else if((mouseEvent === 'rightmove') && (rightMouseDown === true)) {
+	    console.log('right mouse drag NYI');
+        } else if(mouseEvent === 'leftup' && leftMouseDown) {
+	    leftMouseDown = false;
+	    console.log(that.foreground);
+	} else if(mouseEvent === 'rightup' && rightMouseDown) {
+	    rightMouseDown = false;
+	    console.log(that.background);
+        } else {
+	    // (or mouseup) incompatible combination of event and mouse state', mouseEvent, leftMouseDown, rightMouseDown
+	}
     }; // end of mouseEventHandler
 
 
     //set up callbacks for the canvas
     this.stage.addEventListener('stagemousedown', function(event) {
-        mouseEventHandler(event,'down');
 	if(event.nativeEvent.button === 2) {
-	    console.log("right click");
+            mouseEventHandler(event,'rightdown');
 	} else {
-	    console.log("left click");
+	    mouseEventHandler(event,'leftdown');
 	}	
     });
 
     this.stage.addEventListener('stagemousemove', function(event) {
         mouseEventHandler(event,'move');
 	if(event.nativeEvent.button === 2) {
-	    console.log("right drag");
+            mouseEventHandler(event,'rightmove');
 	} else {
-	    console.log("left drag");
+	    mouseEventHandler(event,'leftmove');
 	}
     });
 
     this.stage.addEventListener('stagemouseup', function(event) {
-        mouseEventHandler(event,'up');
 	if(event.nativeEvent.button === 2) {
-	    console.log("right up");
+            mouseEventHandler(event,'rightup');
 	} else {
-	    console.log("left up");
+            mouseEventHandler(event,'leftup');
 	}
     });
 };
