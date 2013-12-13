@@ -24,14 +24,19 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var editTopic = options.editTopic;
     var editService = options.editService;
 
+
     this.bboxDiv = $('#' + options.bboxDiv);
     this.editDiv = $('#' + options.editDiv);
     var canvasWidth = options.canvasWidth;
     var canvasHeight = options.canvasHeight;
 
+
     // needs to match the divs declared in interactive_segmentation_interface.html
     var bboxCanvasId = 'grabcut-bbox-canvas';
     var editCanvasId = 'grabcut-edit-canvas';
+
+    var bboxCanvas = 'grabcut-bbox-canvas-display';
+    var editCanvas = 'grabcut-edit-canvas-display';
 
     //add canvas and buttons to the window
     this.bboxDiv.dialog({
@@ -47,15 +52,26 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     });
     
 
-    this.bboxDiv.html('<div id="' + bboxCanvasId + '"><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
+    this.bboxDiv.html('<div id="' + bboxCanvasId + '"><canvas id ="' + bboxCanvas + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
     this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button>');
+
+
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
     	divID : bboxCanvasId,
+        canvasID : bboxCanvas,
     	host : host,
     	width : canvasWidth,
     	height : canvasHeight,
     	topic : bboxTopic
+    });
+
+    var bboxImageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
+        ros : ros,
+        canvasID : bboxCanvas,
+        width : canvasWidth,
+        height : canvasHeight
+
     });
 
     var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
@@ -83,6 +99,12 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     // received an image as well ...
     this.bboxServer.on('goal', function(goalMessage) {
 	console.log('bbox service call')
+    //first display the new image so it's there when the dialog opens
+    console.log('argh');
+    console.log(goalMessage);
+    bboxImageViewer.updateDisplay(goalMessage.goal.image);
+
+    //open the dialog box
 	that.bboxDiv.dialog("open");
     });
     this.editServer.on('goal', function(goalMessage) {

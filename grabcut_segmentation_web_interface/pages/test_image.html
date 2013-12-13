@@ -30,11 +30,9 @@ function init() {
 
 
   //Create the a grabcut segmentation widget
-  var segmenter= new GRABCUTSEGMENTATIONLIB.ImageViewer({
+  var viewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
     ros : ros,
-    divID : 'image-viewer',
-    segmentationDiv : 'image-segmentation-window',
-    editDiv : 'edit-segmentation-window',
+    canvasID : "image-viewer",
     width : 640,
     height : 480
 
@@ -53,7 +51,7 @@ var listner = new ROSLIB.Topic({
 //message handler
 listner.subscribe(function(message){
   console.log(message);
-  segmenter.updateDisplay(message);
+  viewer.updateDisplay(message);
 });
 
 }
@@ -63,7 +61,9 @@ listner.subscribe(function(message){
 
 <body onload="init()">
   <h1>Interactive Segmentation</h1>
-  <div id="image-viewer"></div>
+  <div id="image-viewer-div">
+    <canvas id="image-viewer" width="640" height = "480"></canvas>
+  </div>
 
 </body>
 </html>

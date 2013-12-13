@@ -14,6 +14,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     var that = this;
 
     var divID = options.divID;
+    var canvasID = options.canvasID;
     this.width = options.width;
     this.height = options.height;
     this.host = options.host;
@@ -28,12 +29,8 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     // used if there was an error loading the stream
     var errorIcon = new MJPEGCANVAS.ErrorIcon();
 
-    // create the canvas to render to
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-
-    document.getElementById(divID).appendChild(this.canvas);
+    //get the canvas
+    this.canvas = document.getElementById(canvasID);
 
     this.stage = new createjs.Stage(this.canvas);
     //console.log(this.canvas);

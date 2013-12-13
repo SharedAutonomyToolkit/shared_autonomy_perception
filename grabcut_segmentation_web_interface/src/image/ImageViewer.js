@@ -8,7 +8,6 @@
  * Takes raw ROS Image from rosbridge and places it it on a given canvas
  * Note this is extremely inefficient for streaming images and is only meant to transfer one image
  * This should NEVER be used for streaming video.  Use the mjpeg_server for this.  
- * T
  */
 
 
@@ -17,18 +16,18 @@
 GRABCUTSEGMENTATIONLIB.ImageViewer = function(options){
     // needed for passing `this` into nested functions
     var that = this;
-        
+    console.log(options);
     options = options || {};
-    var divID = options.divID;
+    var canvasID = options.canvasID;
     this.ros = options.ros;
     this.width = options.width;
     this.height = options.height;
     
-    this.dest = document.createElement('canvas');
+    console.log(canvasID);
+    this.dest = document.getElementById(canvasID);
     this.dest.width = this.width;
     this.dest.height = this.height;
-    document.getElementById(divID).appendChild(this.dest);
-    
+ 
     this.destContext = this.dest.getContext('2d');
     
     this.src = null;
@@ -102,8 +101,8 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
 	}
     }
 
+    //Copy
     this.srcContex.putImageData(this.srcData,0,0);
-    console.log(this.destContext)
     this.destContext.save();
     this.destContext.scale(this.destWidth/this.srcWidth,this.destHeight/this.srcHeight);
     this.destContext.drawImage(this.src,0,0);
