@@ -73,71 +73,56 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.bgLine = new createjs.Shape();
     this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
     this.stage.addChild(this.bgLine);
+
     this.label = 'none'
     // example from:
     // https://github.com/CreateJS/EaselJS/blob/master/examples/CurveTo.html
+    // TODO: the curveTois probably overkill. just lineTo, maybe?
     var oldPt;
     var oldMidPt;
-    /** 
-     * Updates and redraws the current bounding-box for every mouse event.
-     * Modifies that.bounds to save the coordinates
-     */
-    var mouseEventHandler = function (event, mouseEvent){
-	    // TODO: I liked the pattern that used the down click to create a callback
-	    // for mousemove, and the mouseup to remove that callback
-	    if( mouseEvent === 'down') {
-	        console.log('down');
-	        mouseDown = true;
-            oldPt = new createjs.Point(event.stageX, event.stageY);
-            oldMidPt = oldPt;
-	    } else if ((mouseEvent === 'move') && (mouseDown === true)) {
-            // to match the expected Pixel message type
-	        var currentClick={u: Math.round(event.stageX), v: Math.round(event.stageY)};
-            // TODO: these vars are currently unused. 
-            // Sarah says that this magically maps coordinates to ROS coordinates =)
-	        var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
-	        currentPosVec3 = new ROSLIB.Vector3(currentPos);
-		    
-            var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
-            
-            if(that.label === 'foreground') {
-	            that.foreground.push(currentClick);
-	            // TODO: this is probably overkill. just do lineTo?
-                that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
-            } else if(that.label === 'background') {
-	            that.background.push(currentClick);
-	            // TODO: this is probably overkill. just do lineTo?
-                that.bgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
-            }
-            oldPt.x = event.stageX;
-            oldPt.y = event.stageY;
-            
-            oldMidPt.x = midPt.x;
-            oldMidPt.y = midPt.y;
-            
-            that.stage.update();
-            
-        } else if(mouseEvent === 'up') {
-            console.log('up');
-	        mouseDown = false;
-        } else { 
-            // mouse moving w/o button pressed
-	    }
-    }; // end of mouseEventHandler
+    function mouseMoveEventHandler(event) {
+        console.log('mouse moved!');
+	    var currentClick={u: Math.round(event.stageX), v: Math.round(event.stageY)};
+        // TODO: these vars are currently unused. 
+        // Sarah says that this magically maps coordinates to ROS coordinates =)
+	    var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
+	    currentPosVec3 = new ROSLIB.Vector3(currentPos);
+		
+        var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
+        
+        if(that.label === 'foreground') {
+	        that.foreground.push(currentClick);
+            that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+        } else if(that.label === 'background') {
+	        that.background.push(currentClick);
+            that.bgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+        }
+        oldPt.x = event.stageX;
+        oldPt.y = event.stageY;
+        
+        oldMidPt.x = midPt.x;
+        oldMidPt.y = midPt.y;
+        
+        that.stage.update();
+    }
 
+    function mouseDownEventHandler(event) {
+	    console.log('down');
+	    mouseDown = true;
+        oldPt = new createjs.Point(event.stageX, event.stageY);
+        oldMidPt = oldPt;
+        that.stage.addEventListener('stagemousemove', mouseMoveEventHandler);
+    }
+
+    function  mouseUpEventHandler(event) {
+        console.log('up');
+	    mouseDown = false;
+        that.stage.removeEventListener('stagemousemove', mouseMoveEventHandler);
+    }
 
     //set up callbacks for the canvas
-    this.stage.addEventListener('stagemousedown', function(event) {
-	    mouseEventHandler(event,'down');
-    });
-
-    this.stage.addEventListener('stagemousemove', function(event) {
-        mouseEventHandler(event,'move');
-    });
-
-    this.stage.addEventListener('stagemouseup', function(event) {
-        mouseEventHandler(event,'up');
-    });
+    this.stage.addEventListener('stagemousedown', mouseDownEventHandler);
+    this.stage.addEventListener('stagemouseup', mouseUpEventHandler);
 };
 
 
@@ -146,7 +131,13 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     this.foreground = [];
     this.background = [];
     this.label = 'none';
-    console.log(result);
+    // removing the lines we've added, but leaving ready to draw again
+    this.fgLine.graphics.clear();
+    this.fgLine.graphics.beginStroke("#F00").setStrokeStyle(3,"round");
+    this.bgLine.graphics.clear();
+    this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
+    this.stage.update();
+    
     return result;
 }
 

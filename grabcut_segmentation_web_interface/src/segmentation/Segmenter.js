@@ -48,7 +48,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     
 
     this.bboxDiv.html('<div id="' + bboxCanvasId + '"><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
-    this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>"');
+    this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
     	divID : bboxCanvasId,
