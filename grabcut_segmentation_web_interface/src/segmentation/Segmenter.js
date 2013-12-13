@@ -58,20 +58,11 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	messageType : 'sensor_msgs/Image'
     });
 
-    var boundsPublisher = new ROSLIB.Topic({
-        ros : ros,
-        name : "/bbox",
-        messageType : "shared_autonomy_msgs/BoundingBox"
-    });
-
-
     this.bboxServer = new ROSLIB.SimpleActionServer({
 	ros : ros,
 	serverName : bboxService,
 	actionName : 'shared_autonomy_msgs/BoundingBoxAction'
     });
-    console.log(this.bboxServer);
-    //console.log(cameraListener);
 
     // TODo; eventually, we hope to be able to pass image from this into 
     // the Selector, but for now, we have to assume that it'll have
@@ -81,34 +72,32 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	that.bboxDiv.dialog("open");
     });
     
-    // OH! Unlike with the IM stuff, there's no reason that we can't 
- // have both bbox and edit windows open at once... but only one of each.
-// this really needs to be the SAS callback ... 
+    // Just here for debugging =) (since we expect messages and services)
     bboxListener.subscribe(function(message){
 	console.log('bbox message');
-        // TODO: seems like this should only happen on the first? 
-        // or do subsequent calls update the image?
-//	that.bboxDiv.dialog("open");
     });
 
     //setup bbox button callbacks
-    $('#grabcut-segmentation')
+    $('#grabcut-bbox')
 	.button()
 	.click(function(event){
 	    console.log("clicked segmentation button - testing");
-            console.log("testing...");
+	    // TODO: Do I need logic that makes sure that we have
+	    // valid bounds? what should happen if they're bad?
             var bounds = bboxViewer.getbounds();
-            console.log(bounds);
 
-            var msg = new ROSLIB.Message({
-                min_row : Math.round(bounds.y),
-                max_row : Math.round(bounds.y + bounds.dy),
-                min_col : Math.round(bounds.x),
-                max_col : Math.round(bounds.x + bounds.dx)
-            });
-            boundsPublisher.publish(msg);
-            console.log("just published: ");
-            console.log(msg);
+            var result = {
+                min_row : {data : Math.round(bounds.y)},
+                max_row : {data : Math.round(bounds.y + bounds.dy)},
+		min_col : {data : Math.round(bounds.x)},
+                max_col : {data : Math.round(bounds.x + bounds.dx)}
+            };
+
+	    that.bboxServer.setSucceeded(result);
+            console.log("... set succeeded with: ");
+            console.log(result);
+	    that.bboxDiv.dialog("close");
+	    // TODO: somehow need to clear the bbox so it doesn't pop on the next request. (however, that made the window show up immediately, so maybe we should have a tiny one by default?)
 	});
 
     $('#grabcut-reset')
