@@ -30,7 +30,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var canvasWidth = options.canvasWidth;
     var canvasHeight = options.canvasHeight;
 
-
+    // TODO: These names kinda suck.
     // needs to match the divs declared in interactive_segmentation_interface.html
     var bboxCanvasId = 'grabcut-bbox-canvas';
     var editCanvasId = 'grabcut-edit-canvas';
@@ -57,7 +57,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
     var canvas = document.getElementById(bboxCanvas);
-
     bboxStage = new createjs.Stage(canvas);
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
