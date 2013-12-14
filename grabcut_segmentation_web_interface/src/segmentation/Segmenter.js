@@ -50,11 +50,9 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	    width : canvasWidth,
 	    height : canvasHeight
     });
-    
-
 
     this.bboxDiv.html('<div id="' + bboxDivID + '"><canvas id ="' + bboxCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>');
-    this.editDiv.html('<div id="' + editDivID + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
+    this.editDiv.html('<div id="' + editDivID + '"><canvas id ="' + editCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
     // TODO: OK, I'm officially confused by "var" vs "this." vs "" for vars... AND WHAT'S THIS "NEW"?
     var bboxCanvas = document.getElementById(bboxCanvasID);
@@ -74,8 +72,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     editStage = new createjs.Stage(editCanvas);
 
     var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
-    	divID : editDivID,
-    	host : host,
+        stage : editStage, 
     	width : canvasWidth,
     	height : canvasHeight
     });
@@ -100,17 +97,14 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     // the BoundingBox, but for now, we have to assume that it'll have
     // received an image as well ...
     this.bboxServer.on('goal', function(goalMessage) {
-	    console.log('bbox service call')
-        //first display the new image so it's there when the dialog opens
-        console.log('argh');
-        console.log(goalMessage);
+	    console.log('bbox service call');
         bboxImageViewer.updateDisplay(goalMessage.image);
-
-        //open the dialog box
 	    that.bboxDiv.dialog("open");
     });
     this.editServer.on('goal', function(goalMessage) {
-	    console.log('edit service call')
+	    console.log('edit service call');
+        console.log(goalMessage);
+        editImageViewer.updateDisplay(goalMessage.image);
 	    that.editDiv.dialog("open");
     });
     

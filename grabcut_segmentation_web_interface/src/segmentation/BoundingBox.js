@@ -106,7 +106,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     }; // end of mouseEventHandler
 
 
-    //set up callbacks for the canvas
+    //set up callbacks for the stage
     this.stage.addEventListener('stagemousedown', function(event) {
         mouseEventHandler(event,'down');
     });
