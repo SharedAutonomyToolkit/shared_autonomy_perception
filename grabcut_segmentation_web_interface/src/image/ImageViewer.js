@@ -101,7 +101,7 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
 
     //Copy
 
-    this.srcContex.putImageData(this.srcData,0,0);
+    this.srcContext.putImageData(this.srcData,0,0);
     var bitmap = new createjs.Bitmap(this.src);
     this.stage.addChild(bitmap);
     this.stage.update();
