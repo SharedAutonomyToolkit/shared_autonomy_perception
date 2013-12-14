@@ -24,6 +24,9 @@ GRABCUTSEGMENTATIONLIB.ImageViewer = function(options){
     this.height = options.height;
     
     console.log(canvasID);
+    this.stage = options.stage;
+    console.log(this.stage);
+
     this.dest = document.getElementById(canvasID);
     this.dest.width = this.width;
     this.dest.height = this.height;
@@ -107,10 +110,15 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
 	}
 
     //Copy
+
     this.srcContex.putImageData(this.srcData,0,0);
+    var bitmap = new createjs.Bitmap(this.src);
+    this.stage.addChild(bitmap);
+    this.stage.update();
+    /*
     this.destContext.save();
     this.destContext.scale(this.destWidth/this.srcWidth,this.destHeight/this.srcHeight);
     this.destContext.drawImage(this.src,0,0);
     this.destContext.restore();
-    
+    */
 };

@@ -23,22 +23,8 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     var topic = options.topic;
     var overlay = options.overlay;
 
-    // create no image initially
-    this.image = new Image();
-
-    // used if there was an error loading the stream
-    var errorIcon = new MJPEGCANVAS.ErrorIcon();
-
-    //get the canvas
-    this.canvas = document.getElementById(canvasID);
-
-    this.stage = new createjs.Stage(this.canvas);
-    //console.log(this.canvas);
-    //console.log(this.stage);
-    var context = this.canvas.getContext('2d');
-
-    this.canvas.style.background = '#aaaaaa';
-
+    this.stage = options.stage;
+    
     // use requestAnimationFrame if it exists
     var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
         || window.mozRequestAnimationFrame || window.oRequestAnimationFrame
@@ -47,7 +33,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
         };
 
     // grab the initial stream
-    this.changeStream(topic);
+  //  this.changeStream(topic);
 
     // vars used by the mouseEventHandler
     // TODO: I'm not sure when to use this./that. vs just 'var'...
@@ -66,6 +52,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 	    if( mouseState == 'down'){
             //if mouse is pushed down get the position and save it
 	        console.log('mouse down');
+            console.log(that.stage);
 	        mouseDown = true;
 
 	        firstClick = { x: event.stageX, y:  event.stageY};

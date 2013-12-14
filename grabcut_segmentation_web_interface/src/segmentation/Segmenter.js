@@ -56,11 +56,14 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     this.bboxDiv.html('<div id="' + bboxCanvasId + '"><canvas id ="' + bboxCanvas + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
     this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
+    var canvas = document.getElementById(bboxCanvas);
 
+    bboxStage = new createjs.Stage(canvas);
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
     	divID : bboxCanvasId,
         canvasID : bboxCanvas,
+        stage : bboxStage,
     	host : host,
     	width : canvasWidth,
     	height : canvasHeight,
@@ -70,6 +73,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var bboxImageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
         ros : ros,
         canvasID : bboxCanvas,
+        stage : bboxStage,
         width : canvasWidth,
         height : canvasHeight
 
