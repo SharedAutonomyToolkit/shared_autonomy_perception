@@ -32,11 +32,11 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     // TODO: These names kinda suck.
     // needs to match the divs declared in interactive_segmentation_interface.html
-    var bboxCanvasId = 'grabcut-bbox-canvas';
-    var editCanvasId = 'grabcut-edit-canvas';
+    var bboxDivID = 'grabcut-bbox-canvas';
+    var editDivID = 'grabcut-edit-canvas';
 
-    var bboxCanvas = 'grabcut-bbox-canvas-display';
-    var editCanvas = 'grabcut-edit-canvas-display';
+    var bboxCanvasID = 'grabcut-bbox-canvas-display';
+    var editCanvasID = 'grabcut-edit-canvas-display';
 
     //add canvas and buttons to the window
     this.bboxDiv.dialog({
@@ -53,37 +53,35 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     
 
 
-    this.bboxDiv.html('<div id="' + bboxCanvasId + '"><canvas id ="' + bboxCanvas + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>'); 	
-    this.editDiv.html('<div id="' + editCanvasId + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
+    this.bboxDiv.html('<div id="' + bboxDivID + '"><canvas id ="' + bboxCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>');
+    this.editDiv.html('<div id="' + editDivID + '"><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
-    var canvas = document.getElementById(bboxCanvas);
-    bboxStage = new createjs.Stage(canvas);
+    // TODO: OK, I'm officially confused by "var" vs "this." vs "" for vars... AND WHAT'S THIS "NEW"?
+    var bboxCanvas = document.getElementById(bboxCanvasID);
+    bboxStage = new createjs.Stage(bboxCanvas);
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
-    	divID : bboxCanvasId,
-        canvasID : bboxCanvas,
         stage : bboxStage,
-    	host : host,
     	width : canvasWidth,
-    	height : canvasHeight,
-    	topic : bboxTopic
+    	height : canvasHeight
     });
 
     var bboxImageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
-        ros : ros,
-        canvasID : bboxCanvas,
-        stage : bboxStage,
-        width : canvasWidth,
-        height : canvasHeight
-
+        stage : bboxStage
     });
 
+    var editCanvas = document.getElementById(editCanvasID);
+    editStage = new createjs.Stage(editCanvas);
+
     var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
-    	divID : editCanvasId,
+    	divID : editDivID,
     	host : host,
     	width : canvasWidth,
-    	height : canvasHeight,
-    	topic : editTopic
+    	height : canvasHeight
+    });
+
+    var editImageViewer = new GRABCUTSEGMENTATIONLIB.ImageViewer({
+        stage : editStage
     });
 
     this.bboxServer = new ROSLIB.SimpleActionServer({

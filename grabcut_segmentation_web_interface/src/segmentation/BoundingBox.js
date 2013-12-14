@@ -13,27 +13,16 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     // needed for passing `this` into nested functions
     var that = this;
 
-    var divID = options.divID;
-    var canvasID = options.canvasID;
+    this.stage = options.stage;
     this.width = options.width;
     this.height = options.height;
-    this.host = options.host;
-    this.port = options.port || 8080;
-    this.quality = options.quality;
-    var topic = options.topic;
-    var overlay = options.overlay;
 
-    this.stage = options.stage;
-    
     // use requestAnimationFrame if it exists
     var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
         || window.mozRequestAnimationFrame || window.oRequestAnimationFrame
         || window.msRequestAnimationFrame || function(callback) {
             setInterval(callback, 100);
         };
-
-    // grab the initial stream
-  //  this.changeStream(topic);
 
     // vars used by the mouseEventHandler
     // TODO: I'm not sure when to use this./that. vs just 'var'...
@@ -137,28 +126,3 @@ GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
 }
 
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.__proto__ = EventEmitter2.prototype;
-
-/**
- * Change the stream of this canvas to the given topic.
- *
- * @param topic - the topic to stream, like '/wide_stereo/left/image_color'
- */
-GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.changeStream = function(topic) {
-    this.image = new Image();
-    // create the image to hold the stream
-    var src = 'http://' + this.host + ':' + this.port + '/snapshot?topic=' + topic;
-    // add various options
-    src += '?width=' + this.width;
-    src += '?height=' + this.height;
-    if (this.quality > 0) {
-        src += '?quality=' + this.quality;
-    }
-    this.image.src = src;
-    // emit an event for the change
-    this.emit('change', topic);
-
-    //trying out bitmap easel thing
-    var imagebitmap = new createjs.Bitmap(this.image);
-    console.log('bitmap');
-    this.stage.addChild(imagebitmap);
-};
