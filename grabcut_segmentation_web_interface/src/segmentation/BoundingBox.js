@@ -30,8 +30,9 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     var firstClick = null;
     var position = null;
     var positonVec3 = null;
-    var rect = null;
     this.bounds = null;
+    this.rect = new createjs.Shape();
+    this.stage.addChild(this.rect);
 
     /** 
      * Updates and redraws the current bounding-box for every mouse event.
@@ -49,15 +50,11 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
             // TODO: these aren't used?
 	        position = that.stage.globalToRos(event.stageX, event.stageY);
             positionVec3 = new ROSLIB.Vector3(position);
-            
-	        //remove previous rectangle
-            if (rect){
-                console.log('removing rect')
-		        that.stage.removeChild(rect);
-		        rect = null;
-                that.stage.update();
-                that.bounds = null;
-	        }
+
+            // remove previous rectangle
+            that.rect.graphics.clear();
+            that.stage.update();
+            that.bounds = null;
 	    }
         else if (mouseState === 'move') {
             if (mouseDown === true) {
@@ -85,17 +82,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 
                 that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
 
-	            //remove old rec so we can draw a new one
-		        // TODO: is this required? or if I leave rect as var, can I just update it??
-	            if(rect) {
-		            that.stage.removeChild(rect);
-		            rect = null;
-	            }
-                // and, draw new rectangle
-	            rect = new createjs.Shape();
-	            rect.graphics.beginStroke("#F00");
-	            rect.graphics.drawRect(squareStart.x, squareStart.y, distancex, distancey);
-	            that.stage.addChild(rect);
+	            that.rect.graphics.clear().beginStroke("#F00").drawRect(squareStart.x, squareStart.y, distancex, distancey);
 	            that.stage.update();
 	        }
         }
@@ -122,6 +109,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 
 
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
+    this.rect.graphics.clear();
     return this.bounds;
 }
 
