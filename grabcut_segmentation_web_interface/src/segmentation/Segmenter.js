@@ -128,7 +128,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
             console.log("... set succeeded with: ");
             console.log(result);
 	        that.bboxDiv.dialog("close");
-	        // TODO: somehow need to clear the bbox so it doesn't pop on the next request. (however, that made the window show up immediately, so maybe we should have a tiny one by default?)
+            // TODO: need to remove the stage's 0-th child
 	    });
 
 

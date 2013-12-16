@@ -72,9 +72,6 @@ def segment_client(input_image, input_depth):
     client.wait_for_result()
     rospy.loginfo('and, got result!')
     print client.get_state()
-    print client.get_result()
-
-
 
 if __name__=="__main__":
 
@@ -105,7 +102,7 @@ if __name__=="__main__":
     if resp is None:
         rospy.logerr('spoof_assembly failed. Requested message %d of %d.', index, msg_count)
     else:
-        #segment_client(resp.image, resp.depth)
-        # edit_client(resp.image)
-        bbox_client(resp.image)
+        segment_client(resp.image, resp.depth)
+        #edit_client(resp.image)
+        #bbox_client(resp.image)
 
