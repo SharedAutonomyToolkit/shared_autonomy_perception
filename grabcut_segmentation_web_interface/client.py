@@ -12,6 +12,7 @@ from sensor_msgs.msg import PointCloud2, Image
 
 from shared_autonomy_msgs.srv import KinectAssemblyRequest, KinectAssemblyResponse, KinectAssembly
 from shared_autonomy_msgs.msg import BoundingBoxGoal, BoundingBoxAction, EditPixelGoal, EditPixelAction
+from shared_autonomy_msgs.msg import SegmentGoal, SegmentAction
 
 def bbox_client(input_image):
 
@@ -54,8 +55,23 @@ def edit_client(input_image):
     print client.get_state()
     print client.get_result()
 
+def segment_client(input_image, input_depth):
 
+    client = actionlib.SimpleActionClient('segment_service', SegmentAction)
+    rospy.loginfo('constructed simple action client')
 
+    # Waits until the action server has started up and started
+    # listening for goals.
+    client.wait_for_server()
+    rospy.loginfo('got server!')
+
+    # tests preemption by "cancel_all_goals"
+    goal = SegmentGoal(image=input_image, depth=input_depth)
+    client.send_goal(goal)
+    rospy.loginfo('sent first goal')
+    client.wait_for_result()
+    rospy.loginfo('and, got result!')
+    print client.get_state()
 
 if __name__=="__main__":
 
@@ -86,6 +102,7 @@ if __name__=="__main__":
     if resp is None:
         rospy.logerr('spoof_assembly failed. Requested message %d of %d.', index, msg_count)
     else:
-        edit_client(resp.image)
-        bbox_client(resp.image)
+        segment_client(resp.image, resp.depth)
+        #edit_client(resp.image)
+        #bbox_client(resp.image)
 

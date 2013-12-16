@@ -18,26 +18,15 @@ GRABCUTSEGMENTATIONLIB.ImageViewer = function(options){
     var that = this;
     console.log(options);
     options = options || {};
-    var canvasID = options.canvasID;
-    this.ros = options.ros;
-    this.width = options.width;
-    this.height = options.height;
-    
-    console.log(canvasID);
+
     this.stage = options.stage;
     console.log(this.stage);
 
-    this.dest = document.getElementById(canvasID);
-    this.dest.width = this.width;
-    this.dest.height = this.height;
- 
-    this.destContext = this.dest.getContext('2d');
-    
     this.src = null;
     this.srcContext = null;
-    this.srcData = null;
     this.srcWidth = 0;
     this.srcHeight = 0;
+    this.srcData = null;
     this.srcPixels = null;
 
 };
@@ -53,7 +42,11 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.__proto__ = EventEmitter2.prototype
 GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     console.log("update display");
 
-    if (img.encoding != 'rgb8' && img.encoding != 'bgr8' ) return;
+    if (img.encoding != 'rgb8' && img.encoding != 'bgr8' ) {
+        console.log('unrecognized image encoding!');
+        console.log(img.encoding);
+        return;
+    }
     
     //get the image data
     var imgWidth = img.width;
@@ -61,59 +54,55 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     var imgPixels = window.atob(img.data);
     var imgLen = imgPixels.length;
 
-    //Set up the canvas first
+    //Set up the canvas first; we'll copy to a never-seen div before updating all at once?
     if (this.src == null ||
-	this.srcWidth != imgWidth ||
-	this.srcHeight != imgHeight) {
-	var div = document.createElement('div');
-	div.innerHTML = '<canvas width="'+ imgWidth + '" height="' + imgHeight + '"></canvas>';
-	this.src = div.firstChild;
-	this.srcContex = this.src.getContext('2d');
-	this.srcWidth = imgWidth;
-	this.srcHeight = imgHeight;
-	this.srcData = this.srcContex.getImageData(0,0,this.srcWidth,this.srcHeight);
-	this.srcPixels = this.srcData.data; 
-	console.log('created new canvas');
+	    this.srcWidth != imgWidth ||
+	    this.srcHeight != imgHeight) {
+
+	    var div = document.createElement('div');
+	    div.innerHTML = '<canvas width="'+ imgWidth + '" height="' + imgHeight + '"></canvas>';
+
+	    this.src = div.firstChild;
+	    this.srcContext = this.src.getContext('2d');
+	    this.srcWidth = imgWidth;
+	    this.srcHeight = imgHeight;
+	    this.srcData = this.srcContext.getImageData(0,0,this.srcWidth,this.srcHeight);
+	    this.srcPixels = this.srcData.data; 
+	    console.log('created new canvas');
     }
 
     //Set up the images
-    var i = 0;
-    var j = 0;   
+    var i = 0; // index into ROS image
+    var j = 0; // index into JS image (rgba?)
     if( img.encoding == 'rgb8'){
-	while(i < imgLen) {
-	    for (var k = 0; k < 3; k++) {
-		this.srcPixels[j+k] = imgPixels.charCodeAt(i+k);
+	    while(i < imgLen) {
+	        for (var k = 0; k < 3; k++) {
+		        this.srcPixels[j+k] = imgPixels.charCodeAt(i+k);
+	        }
+	        this.srcPixels[j+3] = 255;
+	        
+	        i += 3;
+	        j += 4;
 	    }
-	    this.srcPixels[j+3] = 255;
-	    
-	    i += 3;
-	    j += 4;
-	}
     }
-    else {
-	while( i < imgLen) {
+    else { // bgr8?
+	    while( i < imgLen) {
 
-	    this.srcPixels[j+0] = imgPixels.charCodeAt(i+2);
-	    this.srcPixels[j+1] = imgPixels.charCodeAt(i+1);
-	    this.srcPixels[j+2] = imgPixels.charCodeAt(i+0);
+	        this.srcPixels[j+0] = imgPixels.charCodeAt(i+2);
+	        this.srcPixels[j+1] = imgPixels.charCodeAt(i+1);
+	        this.srcPixels[j+2] = imgPixels.charCodeAt(i+0);
 
-	    this.srcPixels[j+3] = 255;
-	    
-	    i += 3;
-	    j += 4;
+	        this.srcPixels[j+3] = 255;
+	        
+	        i += 3;
+	        j += 4;
+        }
 	}
-    }
 
     //Copy
 
-    this.srcContex.putImageData(this.srcData,0,0);
+    this.srcContext.putImageData(this.srcData,0,0);
     var bitmap = new createjs.Bitmap(this.src);
-    this.stage.addChild(bitmap);
+    this.stage.addChildAt(bitmap, 0);
     this.stage.update();
-    /*
-    this.destContext.save();
-    this.destContext.scale(this.destWidth/this.srcWidth,this.destHeight/this.srcHeight);
-    this.destContext.drawImage(this.src,0,0);
-    this.destContext.restore();
-    */
 };

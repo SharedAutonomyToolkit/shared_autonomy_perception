@@ -13,32 +13,10 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     // needed for passing `this` into nested functions
     var that = this;
 
-    var divID = options.divID;
+    this.stage = options.stage;
     this.width = options.width;
     this.height = options.height;
-    this.host = options.host;
-    this.port = options.port || 8080;
-    this.quality = options.quality;
-    var topic = options.topic;
-    var overlay = options.overlay;
 
-    // create no image initially
-    this.image = new Image();
-
-    // used if there was an error loading the stream
-    var errorIcon = new MJPEGCANVAS.ErrorIcon();
-
-    // create the canvas to render to
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-
-    document.getElementById(divID).appendChild(this.canvas);
-
-    this.stage = new createjs.Stage(this.canvas);
-    var context = this.canvas.getContext('2d');
-
-    this.canvas.style.background = '#aaaaaa';
 
     // use requestAnimationFrame if it exists
     var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
@@ -46,9 +24,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
         || window.msRequestAnimationFrame || function(callback) {
             setInterval(callback, 100);
         };
-
-    // grab the initial stream
-    this.changeStream(topic);
 
     // vars used by the mouseEventHandler
     // TODO: I'm not sure when to use this./that. vs just 'var'...
@@ -74,7 +49,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     var oldPt;
     var oldMidPt;
     function mouseMoveEventHandler(event) {
-        console.log('mouse moved!');
+
 	    var currentClick={u: Math.round(event.stageX), v: Math.round(event.stageY)};
         // TODO: these vars are currently unused. 
         // Sarah says that this magically maps coordinates to ROS coordinates =)
@@ -84,11 +59,15 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
         var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
         
         if(that.label === 'foreground') {
+            console.log('mouse moved! - foreground');
 	        that.foreground.push(currentClick);
             that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
         } else if(that.label === 'background') {
+            console.log('mouse moved! - foreground');
 	        that.background.push(currentClick);
             that.bgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
+        } else {
+            console.log('mouse moved! - no label');
         }
         oldPt.x = event.stageX;
         oldPt.y = event.stageY;
@@ -104,6 +83,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
 	    mouseDown = true;
         oldPt = new createjs.Point(event.stageX, event.stageY);
         oldMidPt = oldPt;
+        console.log('stage children: ', that.stage.getNumChildren());
         that.stage.addEventListener('stagemousemove', mouseMoveEventHandler);
     }
 
@@ -136,33 +116,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
 }
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
-
-/**
- * Change the stream of this canvas to the given topic.
- *
- * @param topic - the topic to stream, like '/wide_stereo/left/image_color'
- */
-GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.changeStream = function(topic) {
-    this.image = new Image();
-    // create the image to hold the stream
-    var src = 'http://' + this.host + ':' + this.port + '/snapshot?topic=' + topic;
-    // add various options
-    src += '?width=' + this.width;
-    src += '?height=' + this.height;
-    if (this.quality > 0) {
-        src += '?quality=' + this.quality;
-    }
-    this.image.src = src;
-    // emit an event for the change
-    // TODO; what listens to this?
-    this.emit('change', topic);
-
-    //trying out bitmap easel thing
-    var imagebitmap = new createjs.Bitmap(this.image);
-    console.log('bitmap');
-    this.stage.addChild(imagebitmap);
-
-};
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setForeground = function() {
     this.label = 'foreground';
