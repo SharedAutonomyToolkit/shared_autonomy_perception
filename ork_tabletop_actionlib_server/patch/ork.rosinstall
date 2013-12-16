@@ -1,0 +1,16 @@
+- git: {local-name: ecto, uri: "https://github.com/plasmodic/ecto", version: c0e9e957a132f482ab6fb8ce341a357dfd087077}
+- git: {local-name: ecto_image_pipeline, uri: "https://github.com/plasmodic/ecto_image_pipeline", version: ee2941d128e1a695631e398e02bfd3579b2a39a9}
+- git: {local-name: ecto_openni, uri: "https://github.com/plasmodic/ecto_openni", version: 9c9260c86b1975e7e2850caa6d6631e1e025c992}
+- git: {local-name: ecto_opencv, uri: "https://github.com/plasmodic/ecto_opencv", version: bb5f8e2d4d158880d92bffba3ea74c7e57a712f6}
+- git: {local-name: ecto_pcl, uri: "https://github.com/plasmodic/ecto_pcl", version: affa52d8ef88435f79c12e740a539279c553431c}
+- git: {local-name: ecto_ros, uri: "https://github.com/plasmodic/ecto_ros", version: 54be443ecc66552039b5c163e6b855397a617b28}
+- git: {local-name: opencv_candidate, uri: "https://github.com/wg-perception/opencv_candidate", version: 0485383e178173e3f5c367072d1d9cd35c8f8deb}
+- git: {local-name: ork_core, uri: "https://github.com/wg-perception/object_recognition_core", version: b43933d3faf5a6f6707bbb90ea6fa4c172a59a93}
+- git: {local-name: ork_capture, uri: "https://github.com/wg-perception/capture", version: a7433760d52a8690c434039b284b70213aa18b56}
+- git: {local-name: ork_reconstruction, uri: "https://github.com/wg-perception/reconstruction", version: e1be3b056256c2b34fc66c2bdd7100029d5975f0}
+- git: {local-name: ork_linemod, uri: "https://github.com/wg-perception/linemod", version: ad7cf558df7534364ecdcae89c000b6f26324ecc}
+- git: {local-name: ork_renderer, uri: "https://github.com/wg-perception/ork_renderer", version: 3babba1cb18498165c28551fc612c7590d078bc9}
+- git: {local-name: ork_tabletop, uri: "https://github.com/wg-perception/tabletop", version: 1856d39d0cb50f1a96f767eb85396f2a283ef65e}
+- git: {local-name: ork_tod, uri: "https://github.com/wg-perception/tod", version: 39d91364e22b63176f03457c3613bc538670b73f}
+- git: {local-name: ork_transparent_objects, uri: "https://github.com/wg-perception/transparent_objects", version: 5c1ff2b79a5361830d647ade59aa4a4948ebd5ba}
+- git: {local-name: ork_ros, uri: "https://github.com/wg-perception/object_recognition_ros", version: 491b1f146b1ec9bbf220ff9c07b86a825daf48bd}

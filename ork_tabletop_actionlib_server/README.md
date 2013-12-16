@@ -1,24 +1,27 @@
 Steps to test this package:
 
 ### Setup 
+Install shared_autonomy_perception:
+
+  * cd && mkdir catkin_hydro && cd catkin_hydro && mkdir src
+  * cd ~/catkin_hydro/src
+  * `git clone git@github.com:SharedAutonomyToolkit/shared_autonomy_perception.git`
+  * `git clone git@github.com:bosch-ros-pkg/cluster_grasp_planner.git -b hydro-devel`
 
 Install ORK:
 
-  * mkdir catkin_hydro && cd catkin_hydro
-  * wstool init src https://raw.github.com/wg-perception/object_recognition_core/master/doc/source/ork.rosinstall
+  * cd ~/catkin_hydro
+  * wstool init src https://raw.github.com/SharedAutonomyToolkit/shared_autonomy_perception/master/ork_tabletop_actionlib_server/patch/ork.rosinstall
   * cd src && wstool update -j8
   * cd .. && rosdep install --from-paths src -i -y
 
-Install shared_autonomy_perception:
-
-  * `git clone git@github.com:SharedAutonomyToolkit/shared_autonomy_perception.git -b feature_ork_actionlib_server`
-
 Patch ORK:
 
-  * source catkin_hydro/devel/setup.bash
+  * rospack profile
+  * source ~catkin_hydro/devel/setup.bash
   * roscd object_recognition_tabletop
   * patch -p1 -i \`rospack find ork_tabletop_actionlib_server\`/patch/clusters.patch
-  * cd catkin_hydro
+  * cd ~/catkin_hydro
   * catkin_make
 
 ### Execution:
