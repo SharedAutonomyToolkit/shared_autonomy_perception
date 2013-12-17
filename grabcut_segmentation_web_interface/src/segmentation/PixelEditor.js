@@ -17,6 +17,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.width = options.width;
     this.height = options.height;
 
+    this.bitmap = null;
 
     // use requestAnimationFrame if it exists
     var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
@@ -116,10 +117,8 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
 }
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
-  //  var backgroundColor = '#555555'; //85 85 85
-  //  var foregroundColor = '#F5F5F5'; //245 245 245
-    var backgroundColor = 85;
-    var foregroundColor = 245; 
+    var backgroundAlpha = 180;
+    var foregroundAlpha = 0;
 
     var maskData = window.atob(mask.data);
 
@@ -130,39 +129,35 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
     tempCanvas.height = this.height;
     tempData = tempCanvasContext.getImageData(0,0,this.width, this.height);
     tempPixels = tempData.data;
-    
+
     imageIndex = 0;
-    
-    //Go through the mask
 
-    for (var maskIndex = 0; maskIndex < maskData.length; maskIndex++)
-    {
-	for(var k = 0; k<3; k++)
-	{
-
-	    if(maskData.charCodeAt(maskIndex+k)==1 || maskData.charCodeAt(maskIndex+k)==3) {
-		//map to foreground color
-		color=foregroundColor;
+    // create mask that's black, and  entirely transparent in the FG, and adds a half-grey to BG pixels
+    for (var maskIndex = 0; maskIndex < maskData.length; maskIndex++) {
+            // make image black
+	    for(var k = 0; k<3; k++) {
+	        tempPixels[imageIndex+k]=0;
+	    }
+        // foreground
+	    if(maskData.charCodeAt(maskIndex)==1 || maskData.charCodeAt(maskIndex)==3) {
+		    alpha = foregroundAlpha;
 	    }
 	    else {
-		//map to background color
-		color = backgroundColor;
+		    alpha = backgroundAlpha;
 	    }
-
-	    tempPixels[imageIndex+k]=color;
-
-	}
-	
-	tempPixels[imageIndex+3]=180;  //alpha
-	
-	imageIndex += 4;
+	    tempPixels[imageIndex+3]=alpha; 
+	    imageIndex += 4;
     }
 
     console.log(tempPixels);
-    //now copy the images.
+    //now copy the images. recall that tempPixels= tempData.data
     tempCanvasContext.putImageData(tempData,0,0);
+    if(this.bitmap != null) {
+        this.stage.removeChild(this.bitmap);
+    }
     this.bitmap = new createjs.Bitmap(tempCanvas);
-    this.stage.addChild(this.bitmap);
+    // needs to be in front of the main image, behind everything else.
+    this.stage.addChildAt(this.bitmap,1);
     this.stage.update();
 }
 

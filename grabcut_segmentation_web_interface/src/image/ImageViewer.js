@@ -22,6 +22,8 @@ GRABCUTSEGMENTATIONLIB.ImageViewer = function(options){
     this.stage = options.stage;
     console.log(this.stage);
 
+    this.bitmap = null;
+
     this.src = null;
     this.srcContext = null;
     this.srcWidth = 0;
@@ -41,6 +43,10 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.__proto__ = EventEmitter2.prototype
  */
 GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     console.log("update display");
+
+    if(this.bitmap != null) {
+        this.stage.removeChild(this.bitmap);
+    }
 
     if (img.encoding != 'rgb8' && img.encoding != 'bgr8' ) {
         console.log('unrecognized image encoding!');
@@ -103,7 +109,7 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     //Copy
 
     this.srcContext.putImageData(this.srcData,0,0);
-    var bitmap = new createjs.Bitmap(this.src);
-    this.stage.addChildAt(bitmap, 0);
+    this.bitmap = new createjs.Bitmap(this.src);
+    this.stage.addChildAt(this.bitmap, 0);
     this.stage.update();
 };

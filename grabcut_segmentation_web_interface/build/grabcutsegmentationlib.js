@@ -26,6 +26,8 @@ GRABCUTSEGMENTATIONLIB.ImageViewer = function(options){
     this.stage = options.stage;
     console.log(this.stage);
 
+    this.bitmap = null;
+
     this.src = null;
     this.srcContext = null;
     this.srcWidth = 0;
@@ -46,6 +48,10 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.__proto__ = EventEmitter2.prototype
 GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     console.log("update display");
 
+    if(this.bitmap != null) {
+        this.stage.removeChild(this.bitmap);
+    }
+
     if (img.encoding != 'rgb8' && img.encoding != 'bgr8' ) {
         console.log('unrecognized image encoding!');
         console.log(img.encoding);
@@ -56,6 +62,7 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     var imgWidth = img.width;
     var imgHeight = img.height;
     var imgPixels = window.atob(img.data);
+    
     var imgLen = imgPixels.length;
 
     //Set up the canvas first; we'll copy to a never-seen div before updating all at once?
@@ -106,8 +113,8 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     //Copy
 
     this.srcContext.putImageData(this.srcData,0,0);
-    var bitmap = new createjs.Bitmap(this.src);
-    this.stage.addChildAt(bitmap, 0);
+    this.bitmap = new createjs.Bitmap(this.src);
+    this.stage.addChildAt(this.bitmap, 0);
     this.stage.update();
 };
 /**
@@ -246,6 +253,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.width = options.width;
     this.height = options.height;
 
+    this.bitmap = null;
 
     // use requestAnimationFrame if it exists
     var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
@@ -344,6 +352,51 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     return result;
 }
 
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
+    var backgroundAlpha = 180;
+    var foregroundAlpha = 0;
+
+    var maskData = window.atob(mask.data);
+
+    //create a canvas to make a bitmap
+    var tempCanvas = document.createElement("canvas");
+    var tempCanvasContext = tempCanvas.getContext("2d");
+    tempCanvas.width = this.width;
+    tempCanvas.height = this.height;
+    tempData = tempCanvasContext.getImageData(0,0,this.width, this.height);
+    tempPixels = tempData.data;
+
+    imageIndex = 0;
+
+    // create mask that's black, and  entirely transparent in the FG, and adds a half-grey to BG pixels
+    for (var maskIndex = 0; maskIndex < maskData.length; maskIndex++) {
+            // make image black
+	    for(var k = 0; k<3; k++) {
+	        tempPixels[imageIndex+k]=0;
+	    }
+        // foreground
+	    if(maskData.charCodeAt(maskIndex)==1 || maskData.charCodeAt(maskIndex)==3) {
+		    alpha = foregroundAlpha;
+	    }
+	    else {
+		    alpha = backgroundAlpha;
+	    }
+	    tempPixels[imageIndex+3]=alpha; 
+	    imageIndex += 4;
+    }
+
+    console.log(tempPixels);
+    //now copy the images. recall that tempPixels= tempData.data
+    tempCanvasContext.putImageData(tempData,0,0);
+    if(this.bitmap != null) {
+        this.stage.removeChild(this.bitmap);
+    }
+    this.bitmap = new createjs.Bitmap(tempCanvas);
+    // needs to be in front of the main image, behind everything else.
+    this.stage.addChildAt(this.bitmap,1);
+    this.stage.update();
+}
+
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setForeground = function() {
@@ -425,6 +478,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var editCanvas = document.getElementById(editCanvasID);
     editStage = new createjs.Stage(editCanvas);
 
+    
     var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
         stage : editStage, 
     	width : canvasWidth,
@@ -452,13 +506,16 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     // received an image as well ...
     this.bboxServer.on('goal', function(goalMessage) {
 	    console.log('bbox service call');
+        console.log(goalMessage);
         bboxImageViewer.updateDisplay(goalMessage.image);
 	    that.bboxDiv.dialog("open");
     });
     this.editServer.on('goal', function(goalMessage) {
 	    console.log('edit service call');
         console.log(goalMessage);
+	console.log(editStage);
         editImageViewer.updateDisplay(goalMessage.image);
+        editViewer.displayMask(goalMessage.mask);
 	    that.editDiv.dialog("open");
     });
     
