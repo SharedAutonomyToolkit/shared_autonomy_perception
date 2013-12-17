@@ -115,6 +115,57 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     return result;
 }
 
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
+  //  var backgroundColor = '#555555'; //85 85 85
+  //  var foregroundColor = '#F5F5F5'; //245 245 245
+    var backgroundColor = 85;
+    var foregroundColor = 245; 
+
+    var maskData = window.atob(mask.data);
+
+    //create a canvas to make a bitmap
+    var tempCanvas = document.createElement("canvas");
+    var tempCanvasContext = tempCanvas.getContext("2d");
+    tempCanvas.width = this.width;
+    tempCanvas.height = this.height;
+    tempData = tempCanvasContext.getImageData(0,0,this.width, this.height);
+    tempPixels = tempData.data;
+    
+    imageIndex = 0;
+    
+    //Go through the mask
+
+    for (var maskIndex = 0; maskIndex < maskData.length; maskIndex++)
+    {
+	for(var k = 0; k<3; k++)
+	{
+
+	    if(maskData.charCodeAt(maskIndex+k)==1 || maskData.charCodeAt(maskIndex+k)==3) {
+		//map to foreground color
+		color=foregroundColor;
+	    }
+	    else {
+		//map to background color
+		color = backgroundColor;
+	    }
+
+	    tempPixels[imageIndex+k]=color;
+
+	}
+	
+	tempPixels[imageIndex+3]=180;  //alpha
+	
+	imageIndex += 4;
+    }
+
+    console.log(tempPixels);
+    //now copy the images.
+    tempCanvasContext.putImageData(tempData,0,0);
+    this.bitmap = new createjs.Bitmap(tempCanvas);
+    this.stage.addChild(this.bitmap);
+    this.stage.update();
+}
+
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setForeground = function() {

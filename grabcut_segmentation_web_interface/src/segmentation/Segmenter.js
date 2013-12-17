@@ -71,6 +71,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var editCanvas = document.getElementById(editCanvasID);
     editStage = new createjs.Stage(editCanvas);
 
+    
     var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
         stage : editStage, 
     	width : canvasWidth,
@@ -98,13 +99,16 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     // received an image as well ...
     this.bboxServer.on('goal', function(goalMessage) {
 	    console.log('bbox service call');
+        console.log(goalMessage);
         bboxImageViewer.updateDisplay(goalMessage.image);
 	    that.bboxDiv.dialog("open");
     });
     this.editServer.on('goal', function(goalMessage) {
 	    console.log('edit service call');
         console.log(goalMessage);
+	console.log(editStage);
         editImageViewer.updateDisplay(goalMessage.image);
+        editViewer.displayMask(goalMessage.mask);
 	    that.editDiv.dialog("open");
     });
     
