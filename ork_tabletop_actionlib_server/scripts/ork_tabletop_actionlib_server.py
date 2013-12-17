@@ -250,11 +250,13 @@ class ORKTabletop(object):
         for cloud in range (object_list.__len__()):
             object_centroids.append(self.compute_centroid(object_list[cloud]))
 
-        # print np_cluster_centroids
         recognized_objects = []
+        indices = []
+
         for centroid in range (cluster_centroids.__len__()):
         # dist = self.closest(np_cluster_centroids, np.asarray(cluster_centroids[centroid]))
-            indices = self.do_kdtree(np.asarray(object_centroids), np.asarray(cluster_centroids[centroid]), self.search_radius)
+            if object_centroids:
+                indices = self.do_kdtree(np.asarray(object_centroids), np.asarray(cluster_centroids[centroid]), self.search_radius)
             if not indices:
                 recognized_objects.append(0)
             else:
