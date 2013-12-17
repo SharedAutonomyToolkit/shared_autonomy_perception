@@ -52,6 +52,7 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
     var imgWidth = img.width;
     var imgHeight = img.height;
     var imgPixels = window.atob(img.data);
+    
     var imgLen = imgPixels.length;
 
     //Set up the canvas first; we'll copy to a never-seen div before updating all at once?
