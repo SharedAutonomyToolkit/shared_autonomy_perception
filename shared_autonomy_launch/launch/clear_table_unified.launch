@@ -57,7 +57,7 @@
       </include>        
     </group>
     <group unless="$(arg use_im)">
-      <!-- TODO: fill me in with launching the javascript interface instead! -->
+      <node pkg="rosbridge_server" type="rosbridge_websocket" name="rosbridge"/>
     </group>
 
   </group> <!-- end "if use_grabcut" -->

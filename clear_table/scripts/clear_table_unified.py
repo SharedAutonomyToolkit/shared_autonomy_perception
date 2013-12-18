@@ -13,6 +13,7 @@ from clear_table.grasp_handler import GraspHandler
 from clear_table.moveit_handler import PickupHandler, DropHandler
 from clear_table.scene_handler import SceneHandler
 from clear_table.sensor_handler import SensorHandler
+from sensor_msgs.msg import PointCloud2
 from shared_autonomy_msgs.msg import TabletopGoal, TabletopAction
 
 class Home(smach.State):
@@ -29,6 +30,7 @@ class SegmentORK(smach.State):
          #self.sensors = SensorHandler()
          self.scene = SceneHandler()
          self.orkClient = actionlib.SimpleActionClient('ork_tabletop', TabletopAction)
+         self.point_pub = rospy.Publisher('object_points', PointCloud2)
 
      def execute(self, userdata):
          self.orkClient.wait_for_server()
@@ -44,17 +46,37 @@ class SegmentORK(smach.State):
          if num_objs == 0:
              return 'no_objects'
 
-         obj_idx = random.randrange(0, num_objs)
-         points = result.objects[obj_idx]
-         userdata.object_points = points
-         userdata.object_name = 'obj1'
-
          # need to set up the planning scene ...
          self.scene.clear_scene()
+
          print result.table_pose
          print result.table_dims
          self.scene.add_table(result.table_pose, result.table_dims)
-         self.scene.add_object('obj1', points)
+
+         # randomly choose object to pick up
+         obj_idx = random.randrange(0, num_objs)
+         points = result.objects[obj_idx]
+         userdata.object_points = points
+         pick_object = 'obj' + str(obj_idx)
+         userdata.object_name = pick_object
+
+         self.scene.add_object(pick_object, points)
+
+         #rospy.sleep(5.0)
+
+         #self.point_pub.publish(result.objects[obj_idx])
+
+         #print obj_idx
+         # and, add only the other objects to the octomap
+         #for idx in range(num_objs):
+             #if idx != obj_idx:
+             #    print 'publishing object %d' % idx
+             #    self.point_pub.publish(result.objects[idx])
+             #    rospy.sleep(2.0)
+             #obj_name = 'obj' + str(idx)
+             #obj_points = result.objects[idx]
+             #self.scene.add_object(obj_name, obj_points)
+
          
          print 'successful segmentation!'
          return 'done_segmenting'
@@ -93,7 +115,7 @@ class SegmentGrabcut(smach.State):
          self.scene.update_scene(points)
          
          rospy.loginfo('... sleeping')
-         rospy.sleep(5.0)
+         #rospy.sleep(5.0)
 
          print 'successful segmentation!'
          return 'done_segmenting'
