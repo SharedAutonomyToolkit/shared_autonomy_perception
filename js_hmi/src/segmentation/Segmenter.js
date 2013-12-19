@@ -4,21 +4,25 @@
 
 /**
  * Manage drawing the interactive segmentation input and interaction with ROS
- */
-
-
-/*global $:false */
-
-
-/* This sets up two different SimpleActionServers, one that has the user
+ * This sets up two different SimpleActionServers, one that has the user
  * input a bounding box, and one that get individual pixel labels 
+ * 
+ * Depends upon easeljs and jquery and jquery-ui
+ *
+ * @constructor
+ * @param options - object with the following keys:
+ *   * ros - the ROSLIB.Ros connection handle
+ *   * bboxService - the boundingbox action service topic 
+ *   * editService - the edit action service topic
+ *   * canvasWidth -  desired height of the Width
+ *   * canvasHeight - desired height of the canvas
  */
+
 GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var that = this;
 
     options = options || {};
     var ros = options.ros;
-    var host = options.host || 'localhost';
     var bboxService = options.bboxService;
     var editService = options.editService;
 
@@ -81,40 +85,41 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     });
 
     this.bboxServer = new ROSLIB.SimpleActionServer({
-	    ros : ros,
-	    serverName : bboxService,
-	    actionName : 'shared_autonomy_msgs/BoundingBoxAction'
+	ros : ros,
+	serverName : bboxService,
+	actionName : 'shared_autonomy_msgs/BoundingBoxAction'
     });
 
     this.editServer = new ROSLIB.SimpleActionServer({
-	    ros : ros,
-	    serverName : editService,
-	    actionName : 'shared_autonomy_msgs/EditPixelAction'
+	ros : ros,
+	serverName : editService,
+	actionName : 'shared_autonomy_msgs/EditPixelAction'
     });
 
     // TODo; eventually, we hope to be able to pass image from this into 
     // the BoundingBox, but for now, we have to assume that it'll have
     // received an image as well ...
+
+    //handle boundingbox action request
     this.bboxServer.on('goal', function(goalMessage) {
-	    console.log('bbox service call');
-        console.log(goalMessage);
+	console.log('bbox service call');
         bboxImageViewer.updateDisplay(goalMessage.image);
-	    that.bboxDiv.dialog("open");
-    });
-    this.editServer.on('goal', function(goalMessage) {
-	    console.log('edit service call');
-        console.log(goalMessage);
-	console.log(editStage);
-        editImageViewer.updateDisplay(goalMessage.image);
-        editViewer.displayMask(goalMessage.mask);
-	    that.editDiv.dialog("open");
+	that.bboxDiv.dialog("open");
     });
     
+    //handle edit action request
+    this.editServer.on('goal', function(goalMessage) {
+	console.log('edit service call');
+        editImageViewer.updateDisplay(goalMessage.image);
+        editViewer.displayMask(goalMessage.mask);
+	that.editDiv.dialog("open");
+    });
+    
+
     //setup bbox button callbacks
     $('#grabcut-bbox')
 	    .button()
 	    .click(function(event){
-	        console.log("clicked segmentation button - testing");
 	        // TODO: Do I need logic that makes sure that we have
 	        // valid bounds? what should happen if they're bad?
             var bounds = bboxViewer.getbounds();
@@ -126,7 +131,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
                 max_col : {data : Math.round(bounds.x + bounds.dx)}
             };
 
-	        that.bboxServer.setSucceeded(result);
+	    that.bboxServer.setSucceeded(result);
             console.log("... set succeeded with: ");
             console.log(result);
 	        that.bboxDiv.dialog("close");

@@ -3,11 +3,17 @@
  */
 
 /**
- * Manage drawing the image and drawing of the selection rectangle on the canvas
+ * Manage drawing of current segmentation of code and handle the selection of background and foreground points
+ * 
+ *
+ * @constructor 
+ * @param options - object with the following keys:
+ *   * stage - an easeljs stage that helps manage the canvas: www.createjs.com   
+ *   * width - width of the canvas                                               
+ *   * height - height of the canvas 
+ *
  */
 
-
-/*global $:false */
 
 GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     // needed for passing `this` into nested functions
@@ -49,27 +55,21 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     // TODO: the curveTois probably overkill. just lineTo, maybe?
     var oldPt;
     var oldMidPt;
+    
+    //handle mouse events
     function mouseMoveEventHandler(event) {
 
-	    var currentClick={u: Math.round(event.stageX), v: Math.round(event.stageY)};
-        // TODO: these vars are currently unused. 
-        // Sarah says that this magically maps coordinates to ROS coordinates =)
-	    var currentPos = that.stage.globalToRos(event.stageX, event.stageY);
-	    currentPosVec3 = new ROSLIB.Vector3(currentPos);
-		
+	var currentClick={u: Math.round(event.stageX), v: Math.round(event.stageY)};
+     	
         var midPt = new createjs.Point(oldPt.x + event.stageX>>1, oldPt.y+event.stageY>>1);
         
         if(that.label === 'foreground') {
-            console.log('mouse moved! - foreground');
-	        that.foreground.push(currentClick);
+	    that.foreground.push(currentClick);
             that.fgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
         } else if(that.label === 'background') {
-            console.log('mouse moved! - foreground');
-	        that.background.push(currentClick);
+	    that.background.push(currentClick);
             that.bgLine.graphics.moveTo(midPt.x, midPt.y).curveTo(oldPt.x, oldPt.y, oldMidPt.x, oldMidPt.y);
-        } else {
-            console.log('mouse moved! - no label');
-        }
+        } 
         oldPt.x = event.stageX;
         oldPt.y = event.stageY;
         
@@ -80,17 +80,14 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     }
 
     function mouseDownEventHandler(event) {
-	    console.log('down');
-	    mouseDown = true;
+	mouseDown = true;
         oldPt = new createjs.Point(event.stageX, event.stageY);
         oldMidPt = oldPt;
-        console.log('stage children: ', that.stage.getNumChildren());
         that.stage.addEventListener('stagemousemove', mouseMoveEventHandler);
     }
 
     function  mouseUpEventHandler(event) {
-        console.log('up');
-	    mouseDown = false;
+	mouseDown = false;
         that.stage.removeEventListener('stagemousemove', mouseMoveEventHandler);
     }
 
@@ -99,6 +96,11 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.stage.addEventListener('stagemouseup', mouseUpEventHandler);
 };
 
+
+/**                                                                         
+ * Returns currently labeled pixels and removes the current points
+ *
+ */
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     var result = {fg : this.foreground, bg : this.background};
@@ -116,9 +118,18 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     return result;
 }
 
+/**
+ * Overlay the given mask to the image
+ *
+ * @param mask - the sensor_msgs/Image mask to display (assumes mono8 encoding)
+ */
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
     var backgroundAlpha = 180;
     var foregroundAlpha = 0;
+    
+    if (img.encoding != 'mono8') {
+	console.log('Mask has unrecognized image encoding!');
+    }
 
     var maskData = window.atob(mask.data);
 
@@ -134,22 +145,21 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
 
     // create mask that's black, and  entirely transparent in the FG, and adds a half-grey to BG pixels
     for (var maskIndex = 0; maskIndex < maskData.length; maskIndex++) {
-            // make image black
-	    for(var k = 0; k<3; k++) {
-	        tempPixels[imageIndex+k]=0;
-	    }
+        // make image black
+	for(var k = 0; k<3; k++) {
+	    tempPixels[imageIndex+k]=0;
+	}
         // foreground
-	    if(maskData.charCodeAt(maskIndex)==1 || maskData.charCodeAt(maskIndex)==3) {
-		    alpha = foregroundAlpha;
-	    }
-	    else {
-		    alpha = backgroundAlpha;
-	    }
-	    tempPixels[imageIndex+3]=alpha; 
-	    imageIndex += 4;
+	if(maskData.charCodeAt(maskIndex)==1 || maskData.charCodeAt(maskIndex)==3) {
+	    alpha = foregroundAlpha;
+	}
+	else {
+	    alpha = backgroundAlpha;
+	}
+	tempPixels[imageIndex+3]=alpha; 
+	imageIndex += 4;
     }
-
-    console.log(tempPixels);
+    
     //now copy the images. recall that tempPixels= tempData.data
     tempCanvasContext.putImageData(tempData,0,0);
     if(this.bitmap != null) {
@@ -163,9 +173,20 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
 
+
+/**                                                                         
+ * Sets pixel labels to foreground
+ *
+ */
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setForeground = function() {
     this.label = 'foreground';
 }
+
+/**                                                                         
+ * Sets pixel labels to background
+ *
+ */
+
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setBackground = function() {
     this.label = 'background';
 }
