@@ -35,10 +35,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
             setInterval(callback, 100);
         };
 
-    // vars used by the mouseEventHandler
-    // TODO: I'm not sure when to use this./that. vs just 'var'...
-    var mouseDown = false;
-
     // left drag FG, right drag BG
     this.foreground = [];
     this.background = [];
@@ -83,14 +79,12 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     }
 
     function mouseDownEventHandler(event) {
-	mouseDown = true;
         oldPt = new createjs.Point(event.stageX, event.stageY);
         oldMidPt = oldPt;
         that.stage.addEventListener('stagemousemove', mouseMoveEventHandler);
     }
 
     function  mouseUpEventHandler(event) {
-	mouseDown = false;
         that.stage.removeEventListener('stagemousemove', mouseMoveEventHandler);
     }
 
