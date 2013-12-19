@@ -32,8 +32,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var canvasWidth = options.canvasWidth;
     var canvasHeight = options.canvasHeight;
 
-    // TODO: These names kinda suck.
-    // needs to match the divs declared in interactive_segmentation_interface.html
     var bboxDivID = 'grabcut-bbox-canvas';
     var editDivID = 'grabcut-edit-canvas';
 
@@ -95,10 +93,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	serverName : editService,
 	actionName : 'shared_autonomy_msgs/EditPixelAction'
     });
-
-    // TODo; eventually, we hope to be able to pass image from this into 
-    // the BoundingBox, but for now, we have to assume that it'll have
-    // received an image as well ...
 
     //handle boundingbox action request
     this.bboxServer.on('goal', function(goalMessage) {
