@@ -1,3 +1,10 @@
+<!-- This is copied from pr2_bringup/pr2.launch -->
+<!-- Changes are: 
+  * Adding kinect launch
+  * Removing other cameras
+  * replacing EKF with static_transform_publisher 
+  (for stationary robots, EKF adds a little bit of noise to the orientation)
+  -->
 <launch>
   <param name="/use_sim_time" value="false"/>
   <include file="$(find pr2_machine)/pr2.machine" />
