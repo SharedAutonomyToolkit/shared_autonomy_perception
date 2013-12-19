@@ -224,20 +224,23 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 /**
  * Return the bounds of the current rectangle, in expected JSON message format
 */
-GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
-    this.rect.graphics.clear();
+GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getBounds = function() {
     // TODO: Do I need logic that makes sure that we have valid bounds? 
     // what should happen if they're bad/segment is clicked before rectangle is drawn?
-
     var result = {
         min_row : {data : Math.round(this.bounds.y)},
         max_row : {data : Math.round(this.bounds.y + this.bounds.dy)},
 	min_col : {data : Math.round(this.bounds.x)},
         max_col : {data : Math.round(this.bounds.x + this.bounds.dx)}
     };
-
     return result;
 }
+
+GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.clearBounds = function() {
+    this.rect.graphics.clear();
+    this.bounds = null;
+}
+
 
 /**
  * Sets the current goal of the BoundingBox viewer
@@ -349,8 +352,12 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
  *
  */
 
-GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getLabels = function() {
     var result = {fg : this.foreground, bg : this.background};
+    return result;
+}
+
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.clearLabels = function() {
     // reset state
     this.foreground = [];
     this.background = [];
@@ -361,8 +368,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     this.bgLine.graphics.clear();
     this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
     this.stage.update();
-    
-    return result;
 }
 
 /**
@@ -546,7 +551,8 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-bbox')
 	.button()
 	.click(function(event){
-            var result = bboxViewer.getbounds();
+            var result = bboxViewer.getBounds();
+	    bboxViewer.clearBounds();
 	    bboxServer.setSucceeded(result);
 	    bboxDiv.dialog("close");
 	});
@@ -556,7 +562,8 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-edit')
 	.button()
 	.click(function(event){
-            var result = editViewer.getlabels();
+            var result = editViewer.getLabels();
+	    editViewer.clearLabels();
 	    editServer.setSucceeded(result);
 	    editDiv.dialog("close");
 	});

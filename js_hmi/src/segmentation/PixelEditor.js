@@ -99,8 +99,12 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
  *
  */
 
-GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getLabels = function() {
     var result = {fg : this.foreground, bg : this.background};
+    return result;
+}
+
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.clearLabels = function() {
     // reset state
     this.foreground = [];
     this.background = [];
@@ -111,8 +115,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.getlabels = function() {
     this.bgLine.graphics.clear();
     this.bgLine.graphics.beginStroke("#00F").setStrokeStyle(3,"round");
     this.stage.update();
-    
-    return result;
 }
 
 /**

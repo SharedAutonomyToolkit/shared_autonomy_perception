@@ -98,7 +98,8 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-bbox')
 	.button()
 	.click(function(event){
-            var result = bboxViewer.getbounds();
+            var result = bboxViewer.getBounds();
+	    bboxViewer.clearBounds();
 	    bboxServer.setSucceeded(result);
 	    bboxDiv.dialog("close");
 	});
@@ -108,7 +109,8 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-edit')
 	.button()
 	.click(function(event){
-            var result = editViewer.getlabels();
+            var result = editViewer.getLabels();
+	    editViewer.clearLabels();
 	    editServer.setSucceeded(result);
 	    editDiv.dialog("close");
 	});
