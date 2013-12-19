@@ -426,9 +426,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     options = options || {};
     var ros = options.ros;
     var host = options.host || 'localhost';
-    var bboxTopic = options.bboxTopic;
     var bboxService = options.bboxService;
-    var editTopic = options.editTopic;
     var editService = options.editService;
 
 

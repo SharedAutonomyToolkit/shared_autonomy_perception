@@ -48,9 +48,7 @@ function init() {
   var segmenter= new GRABCUTSEGMENTATIONLIB.Segmenter({
     ros : ros, 
     host : 'localhost',
-    bboxTopic : '/kinect_image',
     bboxService : '/get_bounding_box',
-    editTopic : '/kinect_image',
     editService : '/edit_pixel_labels',
     bboxDiv : 'bbox-segmentation-window',
     editDiv : 'edit-segmentation-window',
