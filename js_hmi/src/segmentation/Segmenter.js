@@ -42,15 +42,15 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     //add canvas and buttons to the window
     this.bboxDiv.dialog({
-	    autoOpen : false,
-	    width : canvasWidth,
-	    height : canvasHeight
+	autoOpen : false,
+	width : canvasWidth,
+	height : canvasHeight
     });
     
     this.editDiv.dialog({
-	    autoOpen : false,
-	    width : canvasWidth,
-	    height : canvasHeight
+	autoOpen : false,
+	width : canvasWidth,
+	height : canvasHeight
     });
 
     this.bboxDiv.html('<div id="' + bboxDivID + '"><canvas id ="' + bboxCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>');
@@ -118,41 +118,41 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     //setup bbox button callbacks
     $('#grabcut-bbox')
-	    .button()
-	    .click(function(event){
-	        // TODO: Do I need logic that makes sure that we have
-	        // valid bounds? what should happen if they're bad?
+	.button()
+	.click(function(event){
+	    // TODO: Do I need logic that makes sure that we have
+	    // valid bounds? what should happen if they're bad?
             var bounds = bboxViewer.getbounds();
 
             var result = {
                 min_row : {data : Math.round(bounds.y)},
                 max_row : {data : Math.round(bounds.y + bounds.dy)},
-		        min_col : {data : Math.round(bounds.x)},
+		min_col : {data : Math.round(bounds.x)},
                 max_col : {data : Math.round(bounds.x + bounds.dx)}
             };
 
 	    that.bboxServer.setSucceeded(result);
             console.log("... set succeeded with: ");
             console.log(result);
-	        that.bboxDiv.dialog("close");
+	    that.bboxDiv.dialog("close");
             // TODO: need to remove the stage's 0-th child
-	    });
+	});
 
 
     //setup edit button callbacks
     $('#grabcut-edit')
-	    .button()
-	    .click(function(event){
-	        console.log("clicked segmentation button - testing");
-	        // TODO: Do I need logic that makes sure that we have
-	        // valid bounds? what should happen if they're bad?
+	.button()
+	.click(function(event){
+	    console.log("clicked segmentation button - testing");
+	    // TODO: Do I need logic that makes sure that we have
+	    // valid bounds? what should happen if they're bad?
             var result = editViewer.getlabels();
 
-	        that.editServer.setSucceeded(result);
+	    that.editServer.setSucceeded(result);
             console.log("... set succeeded with: ");
             console.log(result);
-	        that.editDiv.dialog("close");
-	    });
+	    that.editDiv.dialog("close");
+	});
 
     $('#edit-foreground')
         .button()
