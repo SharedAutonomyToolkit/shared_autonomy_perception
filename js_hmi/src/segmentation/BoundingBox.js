@@ -9,22 +9,17 @@
  * @constructor
  * @param options - object with the following keys:
  *  * stage - an easeljs stage that helps manage the canvas: www.createjs.com
- *  * width - width of the canvas
- *  * height - height of the canvas
  */
 
 
 GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     var that = this;
 
-    this.stage = options.stage;
-    this.width = options.width;
-    this.height = options.height;
+    var stage = options.stage;
 
     this.imageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
-        stage : this.stage
+        stage : stage
     });
-
 
 
     // use requestAnimationFrame if it exists
@@ -42,7 +37,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     var positonVec3 = null;
     this.bounds = null;
     this.rect = new createjs.Shape();
-    this.stage.addChild(this.rect);
+    stage.addChild(this.rect);
 
     /** 
      * Updates and redraws the current bounding-box for every mouse event.
@@ -58,7 +53,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 	    
             // remove previous rectangle
             that.rect.graphics.clear();
-            that.stage.update();
+            stage.update();
             that.bounds = null;
 	}
         else if (mouseState === 'move') {
@@ -83,7 +78,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
                 that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
 
 	        that.rect.graphics.clear().beginStroke("#F00").drawRect(squareStart.x, squareStart.y, distancex, distancey);
-	        that.stage.update();
+	        stage.update();
 	    }
         }
         else { //mouseState === 'up'
@@ -94,15 +89,15 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     
     
     //set up callbacks for the stage
-    this.stage.addEventListener('stagemousedown', function(event) {
+    stage.addEventListener('stagemousedown', function(event) {
         mouseEventHandler(event,'down');
     });
     
-    this.stage.addEventListener('stagemousemove', function(event) {
+    stage.addEventListener('stagemousemove', function(event) {
         mouseEventHandler(event,'move');
     });
 
-    this.stage.addEventListener('stagemouseup', function(event) {
+    stage.addEventListener('stagemouseup', function(event) {
         mouseEventHandler(event,'up');
     });
 };

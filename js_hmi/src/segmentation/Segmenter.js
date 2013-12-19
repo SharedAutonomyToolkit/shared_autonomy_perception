@@ -58,8 +58,6 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
         stage : bboxStage,
-    	width : canvasWidth,
-    	height : canvasHeight
     });
 
     var editCanvas = document.getElementById(editCanvasID);
