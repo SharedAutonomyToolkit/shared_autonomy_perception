@@ -23,11 +23,6 @@ var GRABCUTSEGMENTATIONLIB = GRABCUTSEGMENTATIONLIB || {
 
 
 GRABCUTSEGMENTATIONLIB.ImageViewer = function(options){
-/**
-   * 
-*/
-
-    // needed for passing `this` into nested functions
     var that = this;
     options = options || {};
 
@@ -40,7 +35,6 @@ GRABCUTSEGMENTATIONLIB.ImageViewer = function(options){
     this.srcHeight = 0;
     this.srcData = null;
     this.srcPixels = null;
-
 };
 
 
@@ -133,18 +127,18 @@ GRABCUTSEGMENTATIONLIB.ImageViewer.prototype.updateDisplay = function(img) {
  * @constructor
  * @param options - object with the following keys:
  *  * stage - an easeljs stage that helps manage the canvas: www.createjs.com
- *  * width - width of the canvas
- *  * height - height of the canvas
  */
 
 
 GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
-    // needed for passing `this` into nested functions
     var that = this;
 
-    this.stage = options.stage;
-    this.width = options.width;
-    this.height = options.height;
+    var stage = options.stage;
+
+    this.imageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
+        stage : stage
+    });
+
 
     // use requestAnimationFrame if it exists
     var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
@@ -161,7 +155,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     var positonVec3 = null;
     this.bounds = null;
     this.rect = new createjs.Shape();
-    this.stage.addChild(this.rect);
+    stage.addChild(this.rect);
 
     /** 
      * Updates and redraws the current bounding-box for every mouse event.
@@ -177,7 +171,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 	    
             // remove previous rectangle
             that.rect.graphics.clear();
-            that.stage.update();
+            stage.update();
             that.bounds = null;
 	}
         else if (mouseState === 'move') {
@@ -202,7 +196,7 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
                 that.bounds = {x:squareStart.x, y:squareStart.y, dx:distancex, dy:distancey};
 
 	        that.rect.graphics.clear().beginStroke("#F00").drawRect(squareStart.x, squareStart.y, distancex, distancey);
-	        that.stage.update();
+	        stage.update();
 	    }
         }
         else { //mouseState === 'up'
@@ -213,26 +207,43 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     
     
     //set up callbacks for the stage
-    this.stage.addEventListener('stagemousedown', function(event) {
+    stage.addEventListener('stagemousedown', function(event) {
         mouseEventHandler(event,'down');
     });
     
-    this.stage.addEventListener('stagemousemove', function(event) {
+    stage.addEventListener('stagemousemove', function(event) {
         mouseEventHandler(event,'move');
     });
 
-    this.stage.addEventListener('stagemouseup', function(event) {
+    stage.addEventListener('stagemouseup', function(event) {
         mouseEventHandler(event,'up');
     });
 };
 
 
 /**
- * Return the bounds of the current rectangle
+ * Return the bounds of the current rectangle, in expected JSON message format
 */
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
     this.rect.graphics.clear();
-    return this.bounds;
+    // TODO: Do I need logic that makes sure that we have valid bounds? 
+    // what should happen if they're bad/segment is clicked before rectangle is drawn?
+
+    var result = {
+        min_row : {data : Math.round(this.bounds.y)},
+        max_row : {data : Math.round(this.bounds.y + this.bounds.dy)},
+	min_col : {data : Math.round(this.bounds.x)},
+        max_col : {data : Math.round(this.bounds.x + this.bounds.dx)}
+    };
+
+    return result;
+}
+
+/**
+ * Sets the current goal of the BoundingBox viewer
+ */
+GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.setGoal = function(goalMessage) {
+    this.imageViewer.updateDisplay(goalMessage.image);
 }
 
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.__proto__ = EventEmitter2.prototype;
@@ -255,12 +266,15 @@ GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.__proto__ = EventEmitter2.prototype
 
 
 GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
-    // needed for passing `this` into nested functions
     var that = this;
 
     this.stage = options.stage;
     this.width = options.width;
     this.height = options.height;
+
+    this.imageViewer = new GRABCUTSEGMENTATIONLIB.ImageViewer({
+        stage : this.stage
+    });
 
     this.bitmap = null;
 
@@ -270,10 +284,6 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
         || window.msRequestAnimationFrame || function(callback) {
             setInterval(callback, 100);
         };
-
-    // vars used by the mouseEventHandler
-    // TODO: I'm not sure when to use this./that. vs just 'var'...
-    var mouseDown = false;
 
     // left drag FG, right drag BG
     this.foreground = [];
@@ -319,14 +329,12 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     }
 
     function mouseDownEventHandler(event) {
-	mouseDown = true;
         oldPt = new createjs.Point(event.stageX, event.stageY);
         oldMidPt = oldPt;
         that.stage.addEventListener('stagemousemove', mouseMoveEventHandler);
     }
 
     function  mouseUpEventHandler(event) {
-	mouseDown = false;
         that.stage.removeEventListener('stagemousemove', mouseMoveEventHandler);
     }
 
@@ -366,7 +374,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
     var backgroundAlpha = 180;
     var foregroundAlpha = 0;
     
-    if (img.encoding != 'mono8') {
+    if (mask.encoding != 'mono8') {
 	console.log('Mask has unrecognized image encoding!');
     }
 
@@ -413,6 +421,15 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
 
 
+/**
+ * Sets the current goal of the PixelEditor viewer, updates display
+ */
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setGoal = function(goalMessage) {
+    this.imageViewer.updateDisplay(goalMessage.image);
+    this.displayMask(goalMessage.mask);
+}
+
+
 /**                                                                         
  * Sets pixel labels to foreground
  *
@@ -450,21 +467,18 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setBackground = function() {
  */
 
 GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
-    var that = this;
-
+    // TODO: when is this required? we only do it in some function(options) definitions...
     options = options || {};
+
     var ros = options.ros;
     var bboxService = options.bboxService;
     var editService = options.editService;
 
-
-    this.bboxDiv = $('#' + options.bboxDiv);
-    this.editDiv = $('#' + options.editDiv);
+    var bboxDiv = $('#' + options.bboxDiv);
+    var editDiv = $('#' + options.editDiv);
     var canvasWidth = options.canvasWidth;
     var canvasHeight = options.canvasHeight;
 
-    // TODO: These names kinda suck.
-    // needs to match the divs declared in interactive_segmentation_interface.html
     var bboxDivID = 'grabcut-bbox-canvas';
     var editDivID = 'grabcut-edit-canvas';
 
@@ -472,129 +486,89 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var editCanvasID = 'grabcut-edit-canvas-display';
 
     //add canvas and buttons to the window
-    this.bboxDiv.dialog({
-	    autoOpen : false,
-	    width : canvasWidth,
-	    height : canvasHeight
+    bboxDiv.dialog({
+	autoOpen : false,
+	width : canvasWidth,
+	height : canvasHeight
     });
     
-    this.editDiv.dialog({
-	    autoOpen : false,
-	    width : canvasWidth,
-	    height : canvasHeight
+    editDiv.dialog({
+	autoOpen : false,
+	width : canvasWidth,
+	height : canvasHeight
     });
 
-    this.bboxDiv.html('<div id="' + bboxDivID + '"><canvas id ="' + bboxCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>');
-    this.editDiv.html('<div id="' + editDivID + '"><canvas id ="' + editCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
+    bboxDiv.html('<div id="' + bboxDivID + '"><canvas id ="' + bboxCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>');
+    editDiv.html('<div id="' + editDivID + '"><canvas id ="' + editCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
-    // TODO: OK, I'm officially confused by "var" vs "this." vs "" for vars... AND WHAT'S THIS "NEW"?
     var bboxCanvas = document.getElementById(bboxCanvasID);
     bboxStage = new createjs.Stage(bboxCanvas);
 
     var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
         stage : bboxStage,
-    	width : canvasWidth,
-    	height : canvasHeight
-    });
-
-    var bboxImageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
-        stage : bboxStage
     });
 
     var editCanvas = document.getElementById(editCanvasID);
     editStage = new createjs.Stage(editCanvas);
 
-    
     var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
         stage : editStage, 
     	width : canvasWidth,
     	height : canvasHeight
     });
 
-    var editImageViewer = new GRABCUTSEGMENTATIONLIB.ImageViewer({
-        stage : editStage
-    });
-
-    this.bboxServer = new ROSLIB.SimpleActionServer({
+    var bboxServer = new ROSLIB.SimpleActionServer({
 	ros : ros,
 	serverName : bboxService,
 	actionName : 'shared_autonomy_msgs/BoundingBoxAction'
     });
 
-    this.editServer = new ROSLIB.SimpleActionServer({
+    var editServer = new ROSLIB.SimpleActionServer({
 	ros : ros,
 	serverName : editService,
 	actionName : 'shared_autonomy_msgs/EditPixelAction'
     });
 
-    // TODo; eventually, we hope to be able to pass image from this into 
-    // the BoundingBox, but for now, we have to assume that it'll have
-    // received an image as well ...
-
     //handle boundingbox action request
-    this.bboxServer.on('goal', function(goalMessage) {
-	console.log('bbox service call');
-        bboxImageViewer.updateDisplay(goalMessage.image);
-	that.bboxDiv.dialog("open");
+    bboxServer.on('goal', function(goalMessage) {
+	bboxViewer.setGoal(goalMessage);
+	bboxDiv.dialog("open");
     });
     
     //handle edit action request
-    this.editServer.on('goal', function(goalMessage) {
-	console.log('edit service call');
-        editImageViewer.updateDisplay(goalMessage.image);
-        editViewer.displayMask(goalMessage.mask);
-	that.editDiv.dialog("open");
+    editServer.on('goal', function(goalMessage) {
+        editViewer.setGoal(goalMessage);
+	editDiv.dialog("open");
     });
     
 
     //setup bbox button callbacks
     $('#grabcut-bbox')
-	    .button()
-	    .click(function(event){
-	        // TODO: Do I need logic that makes sure that we have
-	        // valid bounds? what should happen if they're bad?
-            var bounds = bboxViewer.getbounds();
-
-            var result = {
-                min_row : {data : Math.round(bounds.y)},
-                max_row : {data : Math.round(bounds.y + bounds.dy)},
-		        min_col : {data : Math.round(bounds.x)},
-                max_col : {data : Math.round(bounds.x + bounds.dx)}
-            };
-
-	    that.bboxServer.setSucceeded(result);
-            console.log("... set succeeded with: ");
-            console.log(result);
-	        that.bboxDiv.dialog("close");
-            // TODO: need to remove the stage's 0-th child
-	    });
+	.button()
+	.click(function(event){
+            var result = bboxViewer.getbounds();
+	    bboxServer.setSucceeded(result);
+	    bboxDiv.dialog("close");
+	});
 
 
     //setup edit button callbacks
     $('#grabcut-edit')
-	    .button()
-	    .click(function(event){
-	        console.log("clicked segmentation button - testing");
-	        // TODO: Do I need logic that makes sure that we have
-	        // valid bounds? what should happen if they're bad?
+	.button()
+	.click(function(event){
             var result = editViewer.getlabels();
-
-	        that.editServer.setSucceeded(result);
-            console.log("... set succeeded with: ");
-            console.log(result);
-	        that.editDiv.dialog("close");
-	    });
+	    editServer.setSucceeded(result);
+	    editDiv.dialog("close");
+	});
 
     $('#edit-foreground')
         .button()
         .click(function(event) {
-            console.log("Now editing FG pixels");
             editViewer.setForeground();
         });
     $('#edit-background')
         .button()
         .click(function(event) {
-            console.log("Now editing BG pixels");
             editViewer.setBackground();
         });
 
