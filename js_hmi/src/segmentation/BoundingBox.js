@@ -21,6 +21,12 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
     this.width = options.width;
     this.height = options.height;
 
+    this.imageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
+        stage : this.stage
+    });
+
+
+
     // use requestAnimationFrame if it exists
     var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame
         || window.mozRequestAnimationFrame || window.oRequestAnimationFrame
@@ -107,6 +113,8 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 */
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
     this.rect.graphics.clear();
+    // TODO: Do I need logic that makes sure that we have valid bounds? 
+    // what should happen if they're bad/segment is clicked before rectangle is drawn?
 
     var result = {
         min_row : {data : Math.round(this.bounds.y)},
@@ -115,8 +123,14 @@ GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
         max_col : {data : Math.round(this.bounds.x + this.bounds.dx)}
     };
 
-
     return result;
+}
+
+/**
+ * Sets the current goal of the BoundingBox viewer
+ */
+GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.setGoal = function(goalMessage) {
+    this.imageViewer.updateDisplay(goalMessage.image);
 }
 
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.__proto__ = EventEmitter2.prototype;

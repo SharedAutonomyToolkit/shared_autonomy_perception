@@ -23,6 +23,12 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.width = options.width;
     this.height = options.height;
 
+    this.imageViewer = new GRABCUTSEGMENTATIONLIB.ImageViewer({
+        stage : editStage
+    });
+
+
+
     this.bitmap = null;
 
     // use requestAnimationFrame if it exists
@@ -127,7 +133,7 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
     var backgroundAlpha = 180;
     var foregroundAlpha = 0;
     
-    if (img.encoding != 'mono8') {
+    if (mask.encoding != 'mono8') {
 	console.log('Mask has unrecognized image encoding!');
     }
 
@@ -172,6 +178,15 @@ GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.displayMask = function(mask) {
 }
 
 GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.__proto__ = EventEmitter2.prototype;
+
+
+/**
+ * Sets the current goal of the PixelEditor viewer, updates display
+ */
+GRABCUTSEGMENTATIONLIB.PixelEditor.prototype.setGoal = function(goalMessage) {
+    this.imageViewer.updateDisplay(goalMessage.image);
+    this.displayMask(goalMessage.mask);
+}
 
 
 /**                                                                         

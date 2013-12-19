@@ -58,28 +58,19 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var bboxCanvas = document.getElementById(bboxCanvasID);
     bboxStage = new createjs.Stage(bboxCanvas);
 
-    var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
+    this.bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
         stage : bboxStage,
     	width : canvasWidth,
     	height : canvasHeight
     });
 
-    var bboxImageViewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
-        stage : bboxStage
-    });
-
     var editCanvas = document.getElementById(editCanvasID);
     editStage = new createjs.Stage(editCanvas);
 
-    
-    var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
+    this.editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
         stage : editStage, 
     	width : canvasWidth,
     	height : canvasHeight
-    });
-
-    var editImageViewer = new GRABCUTSEGMENTATIONLIB.ImageViewer({
-        stage : editStage
     });
 
     this.bboxServer = new ROSLIB.SimpleActionServer({
@@ -96,16 +87,13 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 
     //handle boundingbox action request
     this.bboxServer.on('goal', function(goalMessage) {
-	console.log('bbox service call');
-        bboxImageViewer.updateDisplay(goalMessage.image);
+	that.bboxViewer.setGoal(goalMessage);
 	that.bboxDiv.dialog("open");
     });
     
     //handle edit action request
     this.editServer.on('goal', function(goalMessage) {
-	console.log('edit service call');
-        editImageViewer.updateDisplay(goalMessage.image);
-        editViewer.displayMask(goalMessage.mask);
+        that.editViewer.setGoal(goalMessage);
 	that.editDiv.dialog("open");
     });
     
@@ -114,14 +102,9 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-bbox')
 	.button()
 	.click(function(event){
-	    // TODO: Do I need logic that makes sure that we have
-	    // valid bounds? what should happen if they're bad?
-            var result = bboxViewer.getbounds();
+            var result = that.bboxViewer.getbounds();
 	    that.bboxServer.setSucceeded(result);
-            console.log("... set succeeded with: ");
-            console.log(result);
 	    that.bboxDiv.dialog("close");
-            // TODO: need to remove the stage's 0-th child
 	});
 
 
@@ -129,27 +112,19 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-edit')
 	.button()
 	.click(function(event){
-	    console.log("clicked segmentation button - testing");
-	    // TODO: Do I need logic that makes sure that we have
-	    // valid bounds? what should happen if they're bad?
-            var result = editViewer.getlabels();
-
+            var result = that.editViewer.getlabels();
 	    that.editServer.setSucceeded(result);
-            console.log("... set succeeded with: ");
-            console.log(result);
 	    that.editDiv.dialog("close");
 	});
 
     $('#edit-foreground')
         .button()
         .click(function(event) {
-            console.log("Now editing FG pixels");
             editViewer.setForeground();
         });
     $('#edit-background')
         .button()
         .click(function(event) {
-            console.log("Now editing BG pixels");
             editViewer.setBackground();
         });
 
