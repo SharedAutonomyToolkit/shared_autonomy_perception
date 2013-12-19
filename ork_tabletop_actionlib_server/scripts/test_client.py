@@ -40,5 +40,6 @@ if __name__ == '__main__':
         print "Table dims: "
         print result.table_dims
         print "Num Objects: ", result.objects.__len__() 
+        print "Recognized Objects: ", result.recognized_objects 
     except rospy.ROSInterruptException:
         print "program interrupted before completion"

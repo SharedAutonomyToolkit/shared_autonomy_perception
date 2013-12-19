@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 import numpy as np
+#import scipy
+import scipy.spatial as ss
 import threading
 import sys
 
@@ -35,6 +37,10 @@ class ORKTabletop(object):
 
         # We listen for ORK's MarkerArray of tables on this topic
         self.table_topic = "/marker_tables"
+        self.clusters_topic = "/marker_array_clusters"
+        self.extract_clusters = True
+        self.recognize_objects = True
+        self.search_radius = 0.02
 
         self.tl = TransformListener()
 
@@ -50,16 +56,76 @@ class ORKTabletop(object):
                                                 execute_cb=self.execute_cb, auto_start=False)
         self._as.start()
 
-    # TODO: Is this really the best structure for handling the callbacks?
+    def extract_clusters_f(self):
+        clusters = rospy.wait_for_message(self.clusters_topic, MarkerArray);
+        rospy.loginfo("Clusters %d", clusters.markers.__len__())
+
+        cluster_list = []
+        for i in range(clusters.markers.__len__()):
+#            rospy.loginfo("Clusters' header %s", clusters.markers[i].header.frame_id)
+#            rospy.loginfo("Clusters' points %s", clusters.markers[i].points.__len__())
+            arr_xyz = []
+            for points in range(clusters.markers[i].points.__len__()):
+                arr_xyz.append([clusters.markers[i].points[points].x, clusters.markers[i].points[points].y, clusters.markers[i].points[points].z])
+            pc = PointCloud2()
+            pc = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz]), clusters.markers[i].header.stamp, clusters.markers[i].header.frame_id)
+#            rospy.sleep(1.0)
+            self.pub.publish(pc)
+            cluster_list.append(pc)
+        return cluster_list
+
+    def compute_centroid (self, cloud):
+        arr = pointclouds.pointcloud2_to_array(cloud, 0)
+        arr_xyz = pointclouds.get_xyz_points(arr)
+        min_x = sys.float_info.max
+        min_y = sys.float_info.max
+        min_z = sys.float_info.max
+        max_x = -sys.float_info.max
+        max_y = -sys.float_info.max
+        max_z = -sys.float_info.max
+
+        for j in range (arr_xyz.__len__()):
+            if arr_xyz[j][0] > max_x:
+                max_x = arr_xyz[j][0]
+            if arr_xyz[j][1] > max_y:
+                max_y = arr_xyz[j][1]
+            if arr_xyz[j][2] > max_z:
+                max_z = arr_xyz[j][2]
+            if arr_xyz[j][0] < min_x:
+                min_x = arr_xyz[j][0]
+            if arr_xyz[j][1] < min_y:
+                min_y = arr_xyz[j][1]
+            if arr_xyz[j][2] < min_z:
+                min_z = arr_xyz[j][2]
+        c_x = (max_x + min_x)/2.
+        c_y = (max_y + min_y)/2.
+        c_z = (max_z + min_z)/2.
+#        print "c_x: ", c_x, " ", "c_y: ", c_y, "c_z: ", c_z 
+#        print "min, max", min_x, " ",  max_x, " ",  min_y, " ",  max_y, " ",  min_z, " ",  max_z
+        return [c_x, c_y, c_z]
+
+
+    def closest(self, X, p):
+        disp = X - p
+        return np.argmin((disp*disp).sum(1))
+
+    
+    def do_kdtree(self, array, point, radius):
+        "Uses KD-Tree to query set of points and returns indices of those within a radius"
+        tree = ss.KDTree(array)
+        a = tree.query_ball_point(point, radius)
+        return a
+
+   # TODO: Is this really the best structure for handling the callbacks?
     # Would it be possible to have separate callbacks for table and objects, each updating a most-recently-seen variable?
     # Or maybe use the message_filters.TimeSynchronizer class if corresponding table/object data has identical timestamps?
     def callback(self, data):
-        rospy.loginfo("Objects %d", data.objects.__len__())
+        rospy.loginfo("Recognized objects %d", data.objects.__len__())
 
         table_corners = []
 
         # obtain table_offset and table_pose
-        to = rospy.wait_for_message(self.table_topic, MarkerArray);
+        to = rospy.wait_for_message(self.table_topic, MarkerArray)
 
         # obtain Table corners ...
         rospy.loginfo("Tables hull size %d", to.markers.__len__())
@@ -139,40 +205,69 @@ class ORKTabletop(object):
 
         # transform each object into desired frame; add to list of clusters
         cluster_list = []
-        for i in range (data.objects.__len__()):
-            rospy.loginfo("Point clouds %s", data.objects[i].point_clouds.__len__())
+        object_list = []
+        #if only clusters on the table should be extracted
+        if self.extract_clusters:
+            cluster_list = self.extract_clusters_f()
+ #else try to recognize objects
+        if self.recognize_objects:
+            for i in range (data.objects.__len__()):
+                #            rospy.loginfo("Point clouds %s", data.objects[i].point_clouds.__len__())              
+                pc = PointCloud2()
+                pc = data.objects[i].point_clouds[0]
+                arr = pointclouds.pointcloud2_to_array(pc, 1)
+                arr_xyz = pointclouds.get_xyz_points(arr)
+                
+                arr_xyz_trans = []
+                for j in range (arr_xyz.__len__()):
+                    ps = PointStamped();
+                    ps.header.frame_id = table_link
+                    ps.header.stamp = table_pose.header.stamp
+                    ps.point.x = arr_xyz[j][0]
+                    ps.point.y = arr_xyz[j][1]
+                    ps.point.z = arr_xyz[j][2]
+                    if self.tl.canTransform(table_pose.header.frame_id, table_link, table_pose.header.stamp):
+                        ps_in_kinect_frame = self.tl.transformPoint(table_pose.header.frame_id, ps)
+                    else:
+                        rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, table_link)
+                        return
+                    arr_xyz_trans.append([ps_in_kinect_frame.point.x, ps_in_kinect_frame.point.y, ps_in_kinect_frame.point.z])
+                    
+                pc_trans = PointCloud2()
+                pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), 
+                                                                    table_pose.header.stamp, table_pose.header.frame_id)
+                    
+                #self.pub.publish(pc_trans)
+                object_list.append(pc_trans)
+        
+        rospy.loginfo("object size %d", object_list.__len__())
 
-            pc = PointCloud2()
-            pc = data.objects[i].point_clouds[0]
-            arr = pointclouds.pointcloud2_to_array(pc, 1)
-            arr_xyz = pointclouds.get_xyz_points(arr)
+        cluster_centroids = []
+        object_centroids = []
+        for cloud in range (cluster_list.__len__()):
+            cluster_centroids.append(self.compute_centroid(cluster_list[cloud]))
 
-            arr_xyz_trans = []
-            for j in range (arr_xyz.__len__()):
-                ps = PointStamped();
-                ps.header.frame_id = table_link
-                ps.header.stamp = table_pose.header.stamp
-                ps.point.x = arr_xyz[j][0]
-                ps.point.y = arr_xyz[j][1]
-                ps.point.z = arr_xyz[j][2]
-                if self.tl.canTransform(table_pose.header.frame_id, table_link, table_pose.header.stamp):
-                    ps_in_kinect_frame = self.tl.transformPoint(table_pose.header.frame_id, ps)
-                else:
-                    rospy.logwarn("No transform between %s and %s possible",table_pose.header.frame_id, table_link)
-                    return
-                arr_xyz_trans.append([ps_in_kinect_frame.point.x, ps_in_kinect_frame.point.y, ps_in_kinect_frame.point.z])
+        for cloud in range (object_list.__len__()):
+            object_centroids.append(self.compute_centroid(object_list[cloud]))
 
-            pc_trans = PointCloud2()
-            pc_trans = pointclouds.xyz_array_to_pointcloud2(np.asarray([arr_xyz_trans]), 
-                                                            table_pose.header.stamp, table_pose.header.frame_id)
+        recognized_objects = []
+        indices = []
 
-            self.pub.publish(pc_trans)
-            cluster_list.append(pc_trans)
-            rospy.loginfo("cluster size %d", cluster_list.__len__())
+        for centroid in range (cluster_centroids.__len__()):
+        # dist = self.closest(np_cluster_centroids, np.asarray(cluster_centroids[centroid]))
+            if object_centroids:
+                indices = self.do_kdtree(np.asarray(object_centroids), np.asarray(cluster_centroids[centroid]), self.search_radius)
+            if not indices:
+                recognized_objects.append(0)
+            else:
+                recognized_objects.append(1)
+        print "recognized objects: ", recognized_objects
 
+        
         # finally - save all data in the object that'll be sent in response to actionserver requests
         with self.result_lock:
             self._result.objects = cluster_list 
+            self._result.recognized_objects = recognized_objects 
             self._result.table_dims = table_dim
             self._result.table_pose = centroid_table_pose
             self.has_data = True
