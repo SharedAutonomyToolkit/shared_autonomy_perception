@@ -116,15 +116,7 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
 	.click(function(event){
 	    // TODO: Do I need logic that makes sure that we have
 	    // valid bounds? what should happen if they're bad?
-            var bounds = bboxViewer.getbounds();
-
-            var result = {
-                min_row : {data : Math.round(bounds.y)},
-                max_row : {data : Math.round(bounds.y + bounds.dy)},
-		min_col : {data : Math.round(bounds.x)},
-                max_col : {data : Math.round(bounds.x + bounds.dx)}
-            };
-
+            var result = bboxViewer.getbounds();
 	    that.bboxServer.setSucceeded(result);
             console.log("... set succeeded with: ");
             console.log(result);

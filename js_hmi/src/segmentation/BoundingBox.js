@@ -103,11 +103,20 @@ GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
 
 
 /**
- * Return the bounds of the current rectangle
+ * Return the bounds of the current rectangle, in expected JSON message format
 */
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.getbounds = function() {
     this.rect.graphics.clear();
-    return this.bounds;
+
+    var result = {
+        min_row : {data : Math.round(this.bounds.y)},
+        max_row : {data : Math.round(this.bounds.y + this.bounds.dy)},
+	min_col : {data : Math.round(this.bounds.x)},
+        max_col : {data : Math.round(this.bounds.x + this.bounds.dx)}
+    };
+
+
+    return result;
 }
 
 GRABCUTSEGMENTATIONLIB.BoundingBox.prototype.__proto__ = EventEmitter2.prototype;
