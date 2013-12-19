@@ -15,7 +15,6 @@
 
 
 GRABCUTSEGMENTATIONLIB.BoundingBox = function(options){
-    // needed for passing `this` into nested functions
     var that = this;
 
     this.stage = options.stage;
