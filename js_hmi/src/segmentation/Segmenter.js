@@ -19,16 +19,15 @@
  */
 
 GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
-    var that = this;
-
+    // TODO: when is this required? we only do it in some function(options) definitions...
     options = options || {};
+
     var ros = options.ros;
     var bboxService = options.bboxService;
     var editService = options.editService;
 
-
-    this.bboxDiv = $('#' + options.bboxDiv);
-    this.editDiv = $('#' + options.editDiv);
+    var bboxDiv = $('#' + options.bboxDiv);
+    var editDiv = $('#' + options.editDiv);
     var canvasWidth = options.canvasWidth;
     var canvasHeight = options.canvasHeight;
 
@@ -39,26 +38,25 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var editCanvasID = 'grabcut-edit-canvas-display';
 
     //add canvas and buttons to the window
-    this.bboxDiv.dialog({
+    bboxDiv.dialog({
 	autoOpen : false,
 	width : canvasWidth,
 	height : canvasHeight
     });
     
-    this.editDiv.dialog({
+    editDiv.dialog({
 	autoOpen : false,
 	width : canvasWidth,
 	height : canvasHeight
     });
 
-    this.bboxDiv.html('<div id="' + bboxDivID + '"><canvas id ="' + bboxCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>');
-    this.editDiv.html('<div id="' + editDivID + '"><canvas id ="' + editCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
+    bboxDiv.html('<div id="' + bboxDivID + '"><canvas id ="' + bboxCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-bbox">Segment</button> <button id="grabcut-reset">Reset</button>');
+    editDiv.html('<div id="' + editDivID + '"><canvas id ="' + editCanvasID + '" width = "' + canvasWidth +'" height="' + canvasHeight + '"> </canvas><\/div> <br> <br><button id="grabcut-edit">Segment</button> <button id="edit-foreground">Edit Foreground</button> <button id="edit-background">EditBackground</button>');
 
-    // TODO: OK, I'm officially confused by "var" vs "this." vs "" for vars... AND WHAT'S THIS "NEW"?
     var bboxCanvas = document.getElementById(bboxCanvasID);
     bboxStage = new createjs.Stage(bboxCanvas);
 
-    this.bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
+    var bboxViewer = new GRABCUTSEGMENTATIONLIB.BoundingBox({
         stage : bboxStage,
     	width : canvasWidth,
     	height : canvasHeight
@@ -67,34 +65,34 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     var editCanvas = document.getElementById(editCanvasID);
     editStage = new createjs.Stage(editCanvas);
 
-    this.editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
+    var editViewer = new GRABCUTSEGMENTATIONLIB.PixelEditor({
         stage : editStage, 
     	width : canvasWidth,
     	height : canvasHeight
     });
 
-    this.bboxServer = new ROSLIB.SimpleActionServer({
+    var bboxServer = new ROSLIB.SimpleActionServer({
 	ros : ros,
 	serverName : bboxService,
 	actionName : 'shared_autonomy_msgs/BoundingBoxAction'
     });
 
-    this.editServer = new ROSLIB.SimpleActionServer({
+    var editServer = new ROSLIB.SimpleActionServer({
 	ros : ros,
 	serverName : editService,
 	actionName : 'shared_autonomy_msgs/EditPixelAction'
     });
 
     //handle boundingbox action request
-    this.bboxServer.on('goal', function(goalMessage) {
-	that.bboxViewer.setGoal(goalMessage);
-	that.bboxDiv.dialog("open");
+    bboxServer.on('goal', function(goalMessage) {
+	bboxViewer.setGoal(goalMessage);
+	bboxDiv.dialog("open");
     });
     
     //handle edit action request
-    this.editServer.on('goal', function(goalMessage) {
-        that.editViewer.setGoal(goalMessage);
-	that.editDiv.dialog("open");
+    editServer.on('goal', function(goalMessage) {
+        editViewer.setGoal(goalMessage);
+	editDiv.dialog("open");
     });
     
 
@@ -102,9 +100,9 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-bbox')
 	.button()
 	.click(function(event){
-            var result = that.bboxViewer.getbounds();
-	    that.bboxServer.setSucceeded(result);
-	    that.bboxDiv.dialog("close");
+            var result = bboxViewer.getbounds();
+	    bboxServer.setSucceeded(result);
+	    bboxDiv.dialog("close");
 	});
 
 
@@ -112,9 +110,9 @@ GRABCUTSEGMENTATIONLIB.Segmenter = function(options){
     $('#grabcut-edit')
 	.button()
 	.click(function(event){
-            var result = that.editViewer.getlabels();
-	    that.editServer.setSucceeded(result);
-	    that.editDiv.dialog("close");
+            var result = editViewer.getlabels();
+	    editServer.setSucceeded(result);
+	    editDiv.dialog("close");
 	});
 
     $('#edit-foreground')
