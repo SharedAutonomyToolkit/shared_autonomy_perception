@@ -16,7 +16,6 @@
 
 
 GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
-    // needed for passing `this` into nested functions
     var that = this;
 
     this.stage = options.stage;
@@ -24,10 +23,8 @@ GRABCUTSEGMENTATIONLIB.PixelEditor = function(options){
     this.height = options.height;
 
     this.imageViewer = new GRABCUTSEGMENTATIONLIB.ImageViewer({
-        stage : editStage
+        stage : this.stage
     });
-
-
 
     this.bitmap = null;
 
