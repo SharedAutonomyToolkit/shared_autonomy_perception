@@ -1,3 +1,8 @@
+<!-- Copied from /opt/ros/hydro/robot.launch -->
+<!-- Changes are:
+    * replacing the default pr2_bringup/pr2.launch with our modified one
+    -->
+
 <launch>
 
     <!-- Robot Description --> <param name="robot_description" textfile="/etc/ros/hydro/urdf/robot.xml" />
