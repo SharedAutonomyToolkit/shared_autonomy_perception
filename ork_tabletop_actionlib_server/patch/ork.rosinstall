@@ -14,3 +14,4 @@
 - git: {local-name: ork_tod, uri: "https://github.com/wg-perception/tod", version: 39d91364e22b63176f03457c3613bc538670b73f}
 - git: {local-name: ork_transparent_objects, uri: "https://github.com/wg-perception/transparent_objects", version: 5c1ff2b79a5361830d647ade59aa4a4948ebd5ba}
 - git: {local-name: ork_ros, uri: "https://github.com/wg-perception/object_recognition_ros", version: 491b1f146b1ec9bbf220ff9c07b86a825daf48bd}
+- git: {local-name: object_recognition_msgs, uri: "https://github.com/wg-perception/object_recognition_msgs.git", version: c1e34f57c44ecbe03c232740fdbfd2eb42bd3425}
