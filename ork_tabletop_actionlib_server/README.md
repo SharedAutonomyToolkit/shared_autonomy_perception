@@ -11,6 +11,7 @@ Install shared_autonomy_perception:
 Install ORK:
 
   * cd ~/catkin_hydro
+  * source /opt/ros/hydro/setup.bash; catkin_make; source devel/setup.bash
   * wstool init src https://raw.github.com/SharedAutonomyToolkit/shared_autonomy_perception/master/ork_tabletop_actionlib_server/patch/ork.rosinstall
   * cd src && wstool update -j8
   * cd .. && rosdep install --from-paths src -i -y
