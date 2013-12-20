@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/jquery-ui.js" />
+ <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+<script type="text/javascript"  src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+<script type="text/javascript" src="http://code.createjs.com/easeljs-0.7.0.min.js"></script>
+
+
+<script type="text/javascript" src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+<script type="text/javascript" src="http://cdn.robotwebtools.org/mjpegcanvasjs/current/mjpegcanvas.min.js"></script>
+<script type="text/javascript" src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+<script type="text/javascript" src="http://cdn.robotwebtools.org/ros2djs/current/ros2d.js"></script>
+
+<script type="text/javascript" src="../build/grabcutsegmentationlib.js"></script> 
+
+<script type="text/javascript">
+/**
+ * Setup all GUI elements when the page is loaded. 
+ */
+function init() {
+  // Connecting to ROS.
+  var ros = new ROSLIB.Ros({
+    url : 'ws://sam:9090'
+  });
+
+//subscribe to image message
+
+var canvas = document.getElementById("image-viewer");
+var stage = new createjs.Stage(canvas);
+
+  //Create the a grabcut segmentation widget
+  var viewer= new GRABCUTSEGMENTATIONLIB.ImageViewer({
+    ros : ros,
+    canvasID : "image-viewer",
+    stage : stage,  
+    width : 640,
+    height : 480
+
+  });
+
+
+
+var listner = new ROSLIB.Topic({
+  ros: ros, 
+  name : '/kinect_image',
+  messageType : 'sensor_msgs/Image'
+
+});
+
+//message handler
+listner.subscribe(function(message){
+  console.log(message);
+  viewer.updateDisplay(message);
+});
+
+}
+
+</script>
+</head>
+
+<body onload="init()">
+  <h1>Interactive Segmentation</h1>
+  <div id="image-viewer-div">
+    <canvas id="image-viewer" width="640" height = "480"></canvas>
+  </div>
+
+</body>
+</html>

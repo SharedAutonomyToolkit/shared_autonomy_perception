@@ -28,6 +28,7 @@ add_action_files(
 add_message_files(
   FILES
   Pixel.msg
+  BoundingBox.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/jquery-ui.js" />
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+
+<script type="text/javascript"  src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="http://code.createjs.com/easeljs-0.7.0.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+
+<!--<script type="text/javascript" src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>-->
+
+<script src="../../../roslibjs/include/EventEmitter2/eventemitter2.js"></script>
+<script type="text/javascript" src="http://cdn.robotwebtools.org/mjpegcanvasjs/current/mjpegcanvas.min.js"></script>
+<script src="../../../roslibjs/build/roslib.js"></script>
+<script type="text/javascript" src="http://cdn.robotwebtools.org/ros2djs/current/ros2d.js"></script>
+
+
+
+<script type="text/javascript" src="../build/grabcutsegmentationlib.js"></script> 
+
+<script type="text/javascript">
+/**
+ * Setup all GUI elements when the page is loaded. 
+ */
+function init() {
+  // Connecting to ROS.
+  var ros = new ROSLIB.Ros({
+    url : 'ws://localhost:9090'
+  });
+
+
+
+  // Create the main viewer.
+  var viewer = new MJPEGCANVAS.Viewer({
+    divID : 'mjpeg',
+    host : 'localhost',
+    width : 640,
+    height : 480,
+    topic : '/kinect_image'
+  });
+
+
+  //Create the a grabcut segmentation widget
+  var segmenter= new GRABCUTSEGMENTATIONLIB.Segmenter({
+    ros : ros, 
+    host : 'localhost',
+    bboxService : '/get_bounding_box',
+    editService : '/edit_pixel_labels',
+    bboxDiv : 'bbox-segmentation-window',
+    editDiv : 'edit-segmentation-window',
+    canvasWidth : 640,
+    canvasHeight : 480
+
+  });
+
+}
+</script>
+</head>
+
+<body onload="init()">
+  <h1>Interactive Segmentation</h1>
+  <div id="mjpeg"></div>
+
+  <div id="bbox-segmentation-window"></div>
+  <div id="edit-segmentation-window"></div>
+
+</body>
+</html>
