@@ -1,0 +1,110 @@
+digraph G {
+	
+	compound=true;
+    rankdir=TD;
+    
+    subgraph cluster_sensing {
+        label="Live Sensing"
+        hardware -> openni
+        openni -> assemble_kinect
+    }
+    subgraph cluster_logging {
+        label="Logged Data"
+        bagfile -> spoof_assembly
+    }
+    assemble_kinect -> bagfile [style=invis, weight=5];
+    
+        
+    subgraph cluster_cleartable {
+        label="Clear Table";
+        start_cleartable -> capture_scene [weight=3];
+        capture_scene -> segment_table [weight=3];
+        segment_table -> plan_grasp [weight=3];
+        plan_grasp -> execute_pickup [weight=3];
+        execute_pickup -> drop[weight=3];
+        drop -> start_cleartable [weight=0 style=dashed];
+    }
+    kinect_assembly_srv[shape=box, style=rounded, color=blue,
+                        label="KinectAssembly.srv \n ------------------ \n --- \n sensor_msgs/Image image \n sensor_msgs/Image depth \n sensor_msgs/CameraInfo info \n  sensor_msgs/PointCloud2 points"];
+    
+    capture_scene -> assemble_kinect [dir=both, label="KinectAssembly.srv", color=blue, fontcolor=blue];
+    capture_scene -> spoof_assembly [dir=both, label="KinectAssembly.srv", color=blue, fontcolor=blue, style=dotted];  
+
+
+    // **************** SEGMENTATION *********************
+
+    subgraph cluster_grabcut3dsegmentation {
+        label="Grabcut 3D Segmentation";
+        grabcut_seg_params[shape=record label="{connect_wait | preempt_wait | loop_rate | grabcut_iters}"];        
+        start_segmentation -> obtain_bbox [weight=3];
+        obtain_bbox -> grabcut3dsegment [weight=3];
+        grabcut3dsegment -> label_pixels [weight=3];
+        label_pixels-> done[weight=3];
+        label_pixels -> grabcut3dsegment [weight=0 style=dashed];
+    }
+    
+    segment_action[shape=box, style=rounded, color=blue,
+                   label="Segment.action \n ------------ \n sensor_msgs/Image image \n sensor_msgs/Image depth \n --- \n sensor_msgs/Image mask \n ---"];
+    segment_table -> grabcut3dsegment[dir=both lhead=cluster_grabcut3dsegmentation label="Segment.action", color=blue, fontcolor=blue];    
+    
+    // **************** REGISTRATION *********************
+    //subgraph cluster_icpregistration {
+      //  label="ICP Registration";
+        //icp_node[label="????"]
+   // }
+    //register -> icp_node [dir=both, lhead=cluster_icpregistration, label="Register.action", color=red, fontcolor=red];
+
+
+    // *************************** IM_HMI *******************
+    subgraph cluster_imhmi {
+        label="Interactive Marker \n Human Machine Interface";
+        imhmi_params[shape=record label="{loop_rate | ppmv}"];
+        
+        // Forces these to be vertical in the same cluster
+        bbox_server -> pixel_server [style=invis];
+        
+        bbox_server;
+        pixel_server;
+    }
+    subgraph cluster_jshmi {
+        label="JavaScript \n Human Machine Interface";
+        // Forces these to be vertical in the same cluster
+        js_bbox_server[label="bbox_server"];
+        js_pixel_server[label="pixel_server"];
+        
+        js_bbox_server -> js_pixel_server [style=invis];
+        
+    }
+
+//js_pixel_server -> bbox_server [style=invis, weight=5];
+pixel_server -> js_bbox_server [style=invis, weight=5];
+
+
+    bbox_action[shape=box, style=rounded, color=blue,
+                label="BoundingBox.action \n ----------------------- \n sensor_msgs/Image image \n --- \n std_msgs/Int16 min_row \n std_msgs/Int16 max_row \n std_msgs/Int16 min_col \n std_msgs/Int16 max_col \n ---"];
+
+    obtain_bbox -> bbox_server [dir=both label="BoundingBox.action" weight=0.5, color=blue, fontcolor=blue];
+    obtain_bbox -> js_bbox_server [dir=both label="BoundingBox.action" weight=0.5, color=blue, fontcolor=blue, style=dotted];
+
+    edit_action[shape=box, style=rounded, color=blue,
+                label="EditPixels.action \n -------------------\n sensor_msgs/Image image \n sensor_msgs/Image mask \n --- \n shared_autonomy_msgs/Pixel[] fg \n shared_autonomy_msgs/Pixel[] bg \n ---"];
+
+label_pixels -> pixel_server [dir=both label="EditPixels.action" weight=0.5, color=blue, fontcolor=blue];
+    label_pixels -> js_pixel_server [dir=both label="EditPixels.action" weight=0.5, color=blue, fontcolor=blue, style=dotted];
+    
+    //icp_node -> icp_server [dir=both, label="????", weight=0.5, color=red, fontcolor=red]
+
+    // ************************ VISUALIZATION *******************
+
+    subgraph cluster_visualization {
+        label="Visualization";
+        rviz[shape=rectangle];
+        robot_web_tools[shape=rectangle label="Robot Web Tools"];
+        
+        //again, for arrangement
+        rviz -> robot_web_tools [style=invis];
+    }
+    imhmi_params -> rviz [ltail=cluster_imhmi lhead=cluster_visualization label="InteractiveMarker.msg", color=green, fontcolor=green];
+    
+    
+}

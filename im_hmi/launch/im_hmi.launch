@@ -1,0 +1,12 @@
+<launch>
+  <arg name="bbox_service" default="get_bounding_box"/>
+  <arg name="pixel_service" default="edit_pixel_labels"/>
+
+  <node name="HMI" pkg="im_hmi" type="im_hmi.py">
+    <remap from="bbox_service" to="$(arg bbox_service)"/>
+    <remap from="pixel_service" to="$(arg pixel_service)"/>
+    <param name="loop_rate" value="5.0"/>
+    <param name="ppm" value="100"/>
+  </node>
+
+</launch>

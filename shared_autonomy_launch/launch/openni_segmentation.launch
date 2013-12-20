@@ -1,3 +1,10 @@
+<!-- copied from openni_launch/openni.launch -->
+<!-- Changes:
+	* removing tf prefix (this is the big one - was breaking other code)
+	* depth registration on by default
+	* publishing TF off by default
+-->
+
 <!-- Entry point for using OpenNI devices -->
 <launch>
 

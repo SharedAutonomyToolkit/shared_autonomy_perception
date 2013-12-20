@@ -4,5 +4,9 @@
 geometry_msgs/PoseStamped table_pose
 geometry_msgs/Point table_dims
 sensor_msgs/PointCloud2[] objects
+#corresponds to above objects array in size
+#objects masked with 1 have been recognized and their grasps can be retrieved from the database
+#objects masked with 0 must use grasp_planner for the computation of grasps
+int8[] recognized_objects
 ---
 #feedback

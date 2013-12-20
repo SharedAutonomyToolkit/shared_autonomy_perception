@@ -50,7 +50,7 @@ def pointcloud2_to_array(cloud_msg, padding=0):
     
     Assumes all fields 32 bit floats, and there is no padding.
     '''
-    print "datatype: ", cloud_msg.fields[0].datatype
+#    print "datatype: ", cloud_msg.fields[0].datatype
     dtype_list = [(f.name, np.float32) for f in cloud_msg.fields]
     for i in range(padding):
         dtype_list.append((str(i), np.float32))
