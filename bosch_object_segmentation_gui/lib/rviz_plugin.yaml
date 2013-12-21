@@ -1,9 +1,0 @@
-name: Bosch Object Segmentation GUI
-library: bosch_object_segmentation_gui_rviz_plugin
-displays:
-  - 
-    class_name: bosch_object_segmentation_gui::ObjectSegmentationDisplay
-    display_name: Bosch Object Segmentation Popup
-    description: |
-      Creates a popup window in case the robot needs assistance with
-      the segmentation of objects.
