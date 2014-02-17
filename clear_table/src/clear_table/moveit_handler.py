@@ -74,8 +74,8 @@ class DropHandler():
     
     def get_place_locations(self):
         locations = []
-        for xx in np.arange(0.4, 0.7, 0.1):
-            for yy in np.arange(0.5, 0.9, 0.1):
+        for xx in np.arange(0.4, 0.5, 0.1):
+            for yy in np.arange(0.8, 0.9, 0.1):
                 pl = PlaceLocation()
                 
                 pt = JointTrajectoryPoint()
